@@ -41,6 +41,53 @@ export type Database = {
         }
         Relationships: []
       }
+      appointments: {
+        Row: {
+          appointment_date: string
+          appointment_time: string
+          contact_name: string
+          created_at: string
+          id: string
+          notes: string | null
+          prescriber_id: string | null
+          status: string
+          updated_at: string
+          visitadora_id: string
+        }
+        Insert: {
+          appointment_date: string
+          appointment_time: string
+          contact_name: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          prescriber_id?: string | null
+          status?: string
+          updated_at?: string
+          visitadora_id: string
+        }
+        Update: {
+          appointment_date?: string
+          appointment_time?: string
+          contact_name?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          prescriber_id?: string | null
+          status?: string
+          updated_at?: string
+          visitadora_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_prescriber_id_fkey"
+            columns: ["prescriber_id"]
+            isOneToOne: false
+            referencedRelation: "prescribers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       goals: {
         Row: {
           created_at: string

@@ -14,16 +14,294 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      achievements: {
+        Row: {
+          badge_icon: string | null
+          description: string | null
+          earned_at: string
+          id: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          badge_icon?: string | null
+          description?: string | null
+          earned_at?: string
+          id?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          badge_icon?: string | null
+          description?: string | null
+          earned_at?: string
+          id?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      goals: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          goal_type: string
+          id: string
+          is_active: boolean
+          start_date: string
+          target_role: Database["public"]["Enums"]["app_role"]
+          target_value: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          goal_type?: string
+          id?: string
+          is_active?: boolean
+          start_date?: string
+          target_role: Database["public"]["Enums"]["app_role"]
+          target_value?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          goal_type?: string
+          id?: string
+          is_active?: boolean
+          start_date?: string
+          target_role?: Database["public"]["Enums"]["app_role"]
+          target_value?: number
+          title?: string
+        }
+        Relationships: []
+      }
+      prescribers: {
+        Row: {
+          best_visit_day: string | null
+          best_visit_time: string | null
+          city: string | null
+          clinic_name: string | null
+          created_at: string
+          crm_crf: string | null
+          full_name: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          neighborhood: string | null
+          number: string | null
+          partnership_potential:
+            | Database["public"]["Enums"]["partnership_potential"]
+            | null
+          prescritor_user_id: string | null
+          specialization: string | null
+          specialty: string | null
+          state: string | null
+          street: string | null
+          updated_at: string
+          visitadora_id: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          best_visit_day?: string | null
+          best_visit_time?: string | null
+          city?: string | null
+          clinic_name?: string | null
+          created_at?: string
+          crm_crf?: string | null
+          full_name: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          neighborhood?: string | null
+          number?: string | null
+          partnership_potential?:
+            | Database["public"]["Enums"]["partnership_potential"]
+            | null
+          prescritor_user_id?: string | null
+          specialization?: string | null
+          specialty?: string | null
+          state?: string | null
+          street?: string | null
+          updated_at?: string
+          visitadora_id?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          best_visit_day?: string | null
+          best_visit_time?: string | null
+          city?: string | null
+          clinic_name?: string | null
+          created_at?: string
+          crm_crf?: string | null
+          full_name?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          neighborhood?: string | null
+          number?: string | null
+          partnership_potential?:
+            | Database["public"]["Enums"]["partnership_potential"]
+            | null
+          prescritor_user_id?: string | null
+          specialization?: string | null
+          specialty?: string | null
+          state?: string | null
+          street?: string | null
+          updated_at?: string
+          visitadora_id?: string | null
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sales: {
+        Row: {
+          amount: number
+          atendente_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          prescriber_id: string | null
+          sale_date: string
+        }
+        Insert: {
+          amount?: number
+          atendente_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          prescriber_id?: string | null
+          sale_date?: string
+        }
+        Update: {
+          amount?: number
+          atendente_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          prescriber_id?: string | null
+          sale_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_prescriber_id_fkey"
+            columns: ["prescriber_id"]
+            isOneToOne: false
+            referencedRelation: "prescribers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      visits: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          prescriber_id: string
+          status: string
+          visit_date: string
+          visitadora_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          prescriber_id: string
+          status?: string
+          visit_date?: string
+          visitadora_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          prescriber_id?: string
+          status?: string
+          visit_date?: string
+          visitadora_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visits_prescriber_id_fkey"
+            columns: ["prescriber_id"]
+            isOneToOne: false
+            referencedRelation: "prescribers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "visitadora" | "prescritor" | "atendente" | "admin"
+      partnership_potential: "baixo" | "medio" | "alto"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +428,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["visitadora", "prescritor", "atendente", "admin"],
+      partnership_potential: ["baixo", "medio", "alto"],
+    },
   },
 } as const

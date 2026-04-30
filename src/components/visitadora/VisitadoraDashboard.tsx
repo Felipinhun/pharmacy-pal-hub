@@ -6,9 +6,10 @@ import { PrescriberForm } from "@/components/visitadora/PrescriberForm";
 import { PrescriberMap } from "@/components/visitadora/PrescriberMap";
 import { GamificationPanel } from "@/components/visitadora/GamificationPanel";
 import { VisitCheckin } from "@/components/visitadora/VisitCheckin";
-import { Users, Calendar, TrendingUp, MapPin, ClipboardCheck } from "lucide-react";
+import { AgendaPanel } from "@/components/visitadora/AgendaPanel";
+import { Users, Calendar, TrendingUp, MapPin, ClipboardCheck, CalendarDays } from "lucide-react";
 
-type TabType = "dashboard" | "cadastro" | "checkin" | "mapa" | "gamificacao";
+type TabType = "dashboard" | "agenda" | "cadastro" | "checkin" | "mapa" | "gamificacao";
 
 export function VisitadoraDashboard() {
   const { user } = useAuth();
@@ -57,6 +58,7 @@ export function VisitadoraDashboard() {
 
   const tabs: { key: TabType; label: string; icon: typeof Users }[] = [
     { key: "dashboard", label: "Dashboard", icon: TrendingUp },
+    { key: "agenda", label: "Agenda", icon: CalendarDays },
     { key: "cadastro", label: "Cadastrar Prescritor", icon: Users },
     { key: "checkin", label: "Registro de Visita", icon: ClipboardCheck },
     { key: "mapa", label: "Mapa", icon: MapPin },
@@ -111,6 +113,8 @@ export function VisitadoraDashboard() {
       {activeTab === "cadastro" && (
         <PrescriberForm onSuccess={loadData} />
       )}
+
+      {activeTab === "agenda" && <AgendaPanel />}
 
       {activeTab === "checkin" && <VisitCheckin />}
 

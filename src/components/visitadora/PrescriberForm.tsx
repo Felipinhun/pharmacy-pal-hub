@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { MapPin, Loader2 } from "lucide-react";
 
 interface PrescriberFormProps {
   onSuccess?: () => void;
@@ -10,6 +11,9 @@ export function PrescriberForm({ onSuccess }: PrescriberFormProps) {
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
   const [form, setForm] = useState({
     full_name: "",
     street: "",
@@ -26,6 +30,26 @@ export function PrescriberForm({ onSuccess }: PrescriberFormProps) {
     best_visit_time: "",
     notes: "",
   });
+
+  const captureLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocalização não suportada pelo seu navegador.");
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLatitude(pos.coords.latitude);
+        setLongitude(pos.coords.longitude);
+        setGeoLoading(false);
+      },
+      (err) => {
+        alert("Não foi possível obter sua localização. Verifique as permissões do navegador.");
+        setGeoLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  };
 
   const updateField = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -52,6 +76,8 @@ export function PrescriberForm({ onSuccess }: PrescriberFormProps) {
       partnership_potential: form.partnership_potential,
       best_visit_day: form.best_visit_day,
       best_visit_time: form.best_visit_time,
+      latitude,
+      longitude,
     });
 
     if (!error) {
@@ -97,6 +123,8 @@ export function PrescriberForm({ onSuccess }: PrescriberFormProps) {
     }
 
     setSubmitting(false);
+    setLatitude(null);
+    setLongitude(null);
   };
 
   const inputClass =
@@ -192,6 +220,26 @@ export function PrescriberForm({ onSuccess }: PrescriberFormProps) {
               <label className={labelClass}>Melhor Horário</label>
               <input className={inputClass} value={form.best_visit_time} onChange={(e) => updateField("best_visit_time", e.target.value)} placeholder="Ex: 14:00" />
             </div>
+          </div>
+          <div className="mt-4">
+            <label className={labelClass}>Localização (GPS)</label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={captureLocation}
+                disabled={geoLoading}
+                className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:opacity-50"
+              >
+                {geoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                {geoLoading ? "Obtendo localização..." : "Capturar Minha Localização"}
+              </button>
+              {latitude !== null && longitude !== null && (
+                <span className="text-sm text-success font-medium">
+                  ✓ Localização capturada ({latitude.toFixed(5)}, {longitude.toFixed(5)})
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Esteja no local do prescritor para capturar a localização correta.</p>
           </div>
           <div className="mt-4">
             <label className={labelClass}>Como foi a visita</label>

@@ -9,12 +9,36 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VisitadoraRouteImport } from './routes/visitadora'
+import { Route as PrescritorRouteImport } from './routes/prescritor'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AtendenteRouteImport } from './routes/atendente'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
+const VisitadoraRoute = VisitadoraRouteImport.update({
+  id: '/visitadora',
+  path: '/visitadora',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrescritorRoute = PrescritorRouteImport.update({
+  id: '/prescritor',
+  path: '/prescritor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AtendenteRoute = AtendenteRouteImport.update({
+  id: '/atendente',
+  path: '/atendente',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -25,37 +49,94 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/atendente': typeof AtendenteRoute
   '/login': typeof LoginRoute
+  '/prescritor': typeof PrescritorRoute
+  '/visitadora': typeof VisitadoraRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/atendente': typeof AtendenteRoute
   '/login': typeof LoginRoute
+  '/prescritor': typeof PrescritorRoute
+  '/visitadora': typeof VisitadoraRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/atendente': typeof AtendenteRoute
   '/login': typeof LoginRoute
+  '/prescritor': typeof PrescritorRoute
+  '/visitadora': typeof VisitadoraRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/atendente'
+    | '/login'
+    | '/prescritor'
+    | '/visitadora'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login'
-  id: '__root__' | '/' | '/login'
+  to: '/' | '/admin' | '/atendente' | '/login' | '/prescritor' | '/visitadora'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/atendente'
+    | '/login'
+    | '/prescritor'
+    | '/visitadora'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  AtendenteRoute: typeof AtendenteRoute
   LoginRoute: typeof LoginRoute
+  PrescritorRoute: typeof PrescritorRoute
+  VisitadoraRoute: typeof VisitadoraRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/visitadora': {
+      id: '/visitadora'
+      path: '/visitadora'
+      fullPath: '/visitadora'
+      preLoaderRoute: typeof VisitadoraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/prescritor': {
+      id: '/prescritor'
+      path: '/prescritor'
+      fullPath: '/prescritor'
+      preLoaderRoute: typeof PrescritorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/atendente': {
+      id: '/atendente'
+      path: '/atendente'
+      fullPath: '/atendente'
+      preLoaderRoute: typeof AtendenteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -70,7 +151,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  AtendenteRoute: AtendenteRoute,
   LoginRoute: LoginRoute,
+  PrescritorRoute: PrescritorRoute,
+  VisitadoraRoute: VisitadoraRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

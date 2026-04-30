@@ -246,8 +246,11 @@ export type Database = {
       }
       visits: {
         Row: {
+          checkin_at: string | null
           created_at: string
           id: string
+          latitude: number | null
+          longitude: number | null
           notes: string | null
           prescriber_id: string
           status: string
@@ -255,8 +258,11 @@ export type Database = {
           visitadora_id: string
         }
         Insert: {
+          checkin_at?: string | null
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           notes?: string | null
           prescriber_id: string
           status?: string
@@ -264,8 +270,11 @@ export type Database = {
           visitadora_id: string
         }
         Update: {
+          checkin_at?: string | null
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           notes?: string | null
           prescriber_id?: string
           status?: string

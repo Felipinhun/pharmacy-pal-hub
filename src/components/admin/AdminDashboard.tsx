@@ -84,11 +84,11 @@ export function AdminDashboard() {
   };
 
   const tabs: { key: AdminTab; label: string }[] = [
-    { key: "overview", label: "Overview" },
-    { key: "users", label: "Registry" },
-    { key: "rankings", label: "Elite Performance" },
-    { key: "sales", label: "Transaction Ledger" },
-    { key: "goals", label: "Strategic Goals" },
+    { key: "overview", label: "Visão Geral" },
+    { key: "users", label: "Gestão de Usuários" },
+    { key: "rankings", label: "Performance" },
+    { key: "sales", label: "Vendas" },
+    { key: "goals", label: "Metas" },
   ];
 
   return (
@@ -96,10 +96,10 @@ export function AdminDashboard() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-light tracking-tight text-foreground">
-            Administrative <span className="font-semibold text-primary">Command</span>
+            Painel <span className="font-semibold text-primary">Administrativo</span>
           </h1>
           <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
-            BIO AUREA EXECUTIVE SUITE
+            BIO AUREA — SUÍTE EXECUTIVA
           </p>
         </div>
         <div className="flex bg-white/40 p-1 rounded-2xl border border-white/20 backdrop-blur-sm self-start overflow-x-auto max-w-full">
@@ -122,21 +122,21 @@ export function AdminDashboard() {
       {activeTab === "overview" && (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard title="Active Network" value={stats.totalUsers} icon={Users} />
+            <StatCard title="Usuários Ativos" value={stats.totalUsers} icon={Users} />
             <StatCard
-              title="Accumulated Revenue"
+              title="Receita Acumulada"
               value={`R$ ${stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
               icon={DollarSign}
             />
-            <StatCard title="Partner Prescribers" value={stats.totalPrescribers} icon={ShieldCheck} />
-            <StatCard title="Field Operations" value={stats.totalVisits} icon={TrendingUp} />
+            <StatCard title="Prescritores Parceiros" value={stats.totalPrescribers} icon={ShieldCheck} />
+            <StatCard title="Operações de Campo" value={stats.totalVisits} icon={TrendingUp} />
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
-               <RankingTable title="Prescriber Master Ranking" entries={prescriberRanking.slice(0, 5)} />
+               <RankingTable title="Ranking de Prescritores" entries={prescriberRanking.slice(0, 5)} />
             </div>
             <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
-               <RankingTable title="Top Performing Staff" entries={atendenteRanking.slice(0, 5)} />
+               <RankingTable title="Performance da Equipe" entries={atendenteRanking.slice(0, 5)} />
             </div>
           </div>
         </div>
@@ -146,10 +146,10 @@ export function AdminDashboard() {
       {activeTab === "rankings" && (
         <div className="grid gap-6 lg:grid-cols-2 animate-in fade-in duration-500">
           <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
-             <RankingTable title="Prescriber Hall of Fame" entries={prescriberRanking} />
+             <RankingTable title="Hall da Fama de Prescritores" entries={prescriberRanking} />
           </div>
           <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
-             <RankingTable title="Staff Achievement Board" entries={atendenteRanking} />
+             <RankingTable title="Quadro de Conquistas da Equipe" entries={atendenteRanking} />
           </div>
         </div>
       )}
@@ -167,19 +167,49 @@ function UsersManagement({
   onRefresh: () => void;
 }) {
   const [changingRole, setChangingRole] = useState<string | null>(null);
+  const [newUser, setNewUser] = useState({ full_name: "", email: "", role: "atendente" });
+  const [creating, setCreating] = useState(false);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    try {
+      // In Supabase, if the admin inserts into profiles, the user will "link" once they sign up with that email
+      const { data, error } = await supabase.from("profiles").insert([{
+        full_name: newUser.full_name,
+        email: newUser.email,
+      }]).select();
+
+      if (data && data[0]) {
+        await supabase.from("user_roles").insert({
+          user_id: data[0].id,
+          role: newUser.role as any
+        });
+      }
+      setNewUser({ full_name: "", email: "", role: "atendente" });
+      onRefresh();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     setChangingRole(userId);
-
-    // Delete existing role
     await supabase.from("user_roles").delete().eq("user_id", userId);
-
-    // Insert new role
     if (newRole) {
       await supabase.from("user_roles").insert({ user_id: userId, role: newRole as "visitadora" | "prescritor" | "atendente" | "admin" });
     }
-
     setChangingRole(null);
+    onRefresh();
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("Deseja realmente excluir este usuário? Todos os dados vinculados podem ser afetados.")) return;
+    
+    await supabase.from("user_roles").delete().eq("user_id", userId);
+    await supabase.from("profiles").delete().eq("id", userId);
     onRefresh();
   };
 
@@ -191,30 +221,76 @@ function UsersManagement({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-      <h3 className="mb-4 text-lg font-semibold text-foreground">Gerenciamento de Usuários</h3>
-      <div className="space-y-2">
-        {users.map((u) => (
-          <div key={u.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
-            <div>
-              <p className="font-medium text-foreground">{u.full_name || u.email}</p>
-              <p className="text-xs text-muted-foreground">{u.email}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={u.role ?? ""}
-                onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                disabled={changingRole === u.id}
-                className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="">Sem papel</option>
-                {Object.entries(roleLabels).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
+    <div className="space-y-6">
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-foreground">Novo Usuário / Convite</h3>
+        <form onSubmit={handleCreateUser} className="grid gap-4 sm:grid-cols-3">
+          <input 
+            className="rounded-lg border border-input bg-background px-4 py-2 text-sm" 
+            placeholder="Nome Completo" 
+            value={newUser.full_name}
+            onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
+            required 
+          />
+          <input 
+            className="rounded-lg border border-input bg-background px-4 py-2 text-sm" 
+            placeholder="Email" 
+            type="email"
+            value={newUser.email}
+            onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+            required 
+          />
+          <div className="flex gap-2">
+            <select 
+              className="flex-1 rounded-lg border border-input bg-background px-4 py-2 text-sm"
+              value={newUser.role}
+              onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+            >
+              {Object.entries(roleLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <button 
+              type="submit" 
+              disabled={creating}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {creating ? "..." : "Adicionar"}
+            </button>
           </div>
-        ))}
+        </form>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-foreground">Usuários Cadastrados</h3>
+        <div className="space-y-2">
+          {users.map((u) => (
+            <div key={u.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+              <div>
+                <p className="font-medium text-foreground">{u.full_name || u.email}</p>
+                <p className="text-xs text-muted-foreground">{u.email}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <select
+                  value={u.role ?? ""}
+                  onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                  disabled={changingRole === u.id}
+                  className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">Sem papel</option>
+                  {Object.entries(roleLabels).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
+                <button 
+                  onClick={() => handleDeleteUser(u.id)}
+                  className="rounded-lg p-2 text-destructive hover:bg-destructive/10 transition-colors"
+                  title="Excluir Usuário"
+                >
+                  <span className="text-lg">🗑️</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

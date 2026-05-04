@@ -57,12 +57,12 @@ export function VisitadoraDashboard() {
   };
 
   const tabs: { key: TabType; label: string; icon: typeof Users }[] = [
-    { key: "dashboard", label: "Overview", icon: TrendingUp },
-    { key: "agenda", label: "Schedule", icon: CalendarDays },
-    { key: "cadastro", label: "New Prescriber", icon: Users },
-    { key: "checkin", label: "Visit Logs", icon: ClipboardCheck },
-    { key: "mapa", label: "Atlas", icon: MapPin },
-    { key: "gamificacao", label: "Pulse", icon: Calendar },
+    { key: "dashboard", label: "Visão Geral", icon: TrendingUp },
+    { key: "agenda", label: "Agenda", icon: CalendarDays },
+    { key: "cadastro", label: "Novo Prescritor", icon: Users },
+    { key: "checkin", label: "Relatórios", icon: ClipboardCheck },
+    { key: "mapa", label: "Mapa", icon: MapPin },
+    { key: "gamificacao", label: "Metas", icon: Calendar },
   ];
 
   return (
@@ -70,10 +70,10 @@ export function VisitadoraDashboard() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-light tracking-tight text-foreground">
-            Visitadora <span className="font-semibold text-primary">Intelligence</span>
+            Inteligência <span className="font-semibold text-primary">da Visitação</span>
           </h1>
           <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
-            BIO AUREA PROFESSIONAL SUITE
+            BIO AUREA — SUÍTE PROFISSIONAL
           </p>
         </div>
         <div className="flex bg-white/40 p-1 rounded-2xl border border-white/20 backdrop-blur-sm self-start">
@@ -97,10 +97,10 @@ export function VisitadoraDashboard() {
       {activeTab === "dashboard" && (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard title="Total Prescribers" value={prescriberCount} icon={Users} description="Active in your network" />
-            <StatCard title="Awaiting Visits" value={pendingVisits} icon={Calendar} trend={pendingVisits > 0 ? "up" : "neutral"} />
+            <StatCard title="Total de Prescritores" value={prescriberCount} icon={Users} description="Ativos na sua rede" />
+            <StatCard title="Visitas Aguardando" value={pendingVisits} icon={Calendar} trend={pendingVisits > 0 ? "up" : "neutral"} />
             <StatCard
-              title="Revenue Generated"
+              title="Receita Gerada"
               value={`R$ ${totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
               icon={TrendingUp}
               trend="up"
@@ -111,8 +111,8 @@ export function VisitadoraDashboard() {
             <div className="group relative overflow-hidden rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h3 className="text-2xl font-light text-foreground">Daily <span className="font-semibold">Schedule</span></h3>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 mt-1">Pending actions for today</p>
+                  <h3 className="text-2xl font-light text-foreground">Agenda <span className="font-semibold">Diária</span></h3>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 mt-1">Ações pendentes para hoje</p>
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <CalendarDays className="h-6 w-6" />
@@ -124,18 +124,18 @@ export function VisitadoraDashboard() {
             <div className="relative overflow-hidden rounded-[2.5rem] border border-white bg-secondary p-8 text-white shadow-2xl shadow-primary/20">
                <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/20 blur-[80px]" />
                <div className="relative">
-                  <h3 className="text-2xl font-light">Network <span className="font-semibold italic">Density</span></h3>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/40 mt-1">Geographic footprint</p>
+                  <h3 className="text-2xl font-light">Densidade <span className="font-semibold italic">da Rede</span></h3>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/40 mt-1">Estatística Geográfica</p>
                   
                   <div className="mt-8 flex flex-col gap-6">
                     <div className="h-32 w-full rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center italic text-white/30 text-xs">
-                      Map preview optimized for professional analysis
+                      Visualização otimizada para análise profissional
                     </div>
                     <button 
                       onClick={() => setActiveTab('mapa')}
                       className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-8 py-3 text-[11px] font-bold uppercase tracking-widest text-primary-foreground shadow-xl shadow-primary/20 transition-transform active:scale-95"
                     >
-                      Open Global Atlas <MapPin className="h-4 w-4" />
+                      Abrir Atlas Global <MapPin className="h-4 w-4" />
                     </button>
                   </div>
                </div>

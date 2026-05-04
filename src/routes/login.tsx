@@ -5,8 +5,8 @@ import { useAuth } from "@/hooks/useAuth";
 export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
-      { title: "Login — FarmaGestão" },
-      { name: "description", content: "Sistema de gestão para farmácia de manipulação" },
+      { title: "Login — Bio Aurea" },
+      { name: "description", content: "Sistema de gestão inteligente para farmácia de manipulação" },
     ],
   }),
   component: LoginPage,
@@ -78,14 +78,14 @@ function LoginPage() {
             Bio <span className="font-semibold italic text-primary">Aurea</span>
           </h1>
           <p className="mt-3 text-sm text-muted-foreground/80 tracking-wide uppercase font-medium">
-            Pharmacy Intelligent Hub
+            Hub Inteligente de Farmácia
           </p>
         </div>
 
         <div className="group relative rounded-3xl border border-white/20 bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl transition-all hover:shadow-primary/10">
           <div className="mb-8">
-            <h2 className="text-xl font-medium text-foreground">Welcome back</h2>
-            <p className="text-sm text-muted-foreground">Sign in to your professional workspace</p>
+            <h2 className="text-xl font-medium text-foreground">Bem-vindo(a)</h2>
+            <p className="text-sm text-muted-foreground">Acesse seu ambiente profissional</p>
           </div>
 
           {error && (
@@ -102,12 +102,12 @@ function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-xl border border-border bg-white/50 px-4 py-3 text-foreground transition-all focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 placeholder:text-muted-foreground/50"
-                placeholder="name@company.com"
+                placeholder="seuemail@empresa.com"
                 required
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Password</label>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground ml-1">Senha</label>
               <input
                 type="password"
                 value={password}
@@ -123,7 +123,7 @@ function LoginPage() {
               className="relative mt-8 w-full overflow-hidden rounded-xl bg-secondary py-3.5 text-sm font-semibold text-secondary-foreground shadow-lg transition-all hover:bg-secondary/90 hover:shadow-xl active:scale-[0.98] disabled:opacity-50"
             >
               <span className={submitting ? "opacity-0" : "opacity-100"}>
-                {submitting ? "Authenticating..." : "Access Hub"}
+                {submitting ? "Autenticando..." : "Acessar Hub"}
               </span>
               {submitting && (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -134,9 +134,14 @@ function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground/60 tracking-wider uppercase">
-          &copy; 2026 Farmácia Bio Aurea
-        </p>
+        <a
+  href="https://instagram.com/alvimautomacoes"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="block text-center text-xs text-muted-foreground/60 tracking-wider uppercase"
+>
+  &copy; 2026 . Alvim Automações
+</a>
       </div>
     </div>
   );

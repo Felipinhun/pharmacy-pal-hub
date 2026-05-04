@@ -36,7 +36,7 @@ export function StatCard({ title, value, icon: Icon, description, trend }: StatC
           <span className={`text-[10px] font-bold uppercase tracking-wider ${
             trend === "up" ? "text-success" : trend === "down" ? "text-destructive" : "text-muted-foreground/60"
           }`}>
-            {trend === "up" ? "Growing" : trend === "down" ? "Declining" : "Stable"}
+            {trend === "up" ? "Em Alta" : trend === "down" ? "Em Queda" : "Estável"}
           </span>
         </div>
       )}

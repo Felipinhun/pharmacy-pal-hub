@@ -68,7 +68,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="flex flex-col">
               <span className="text-xl font-bold tracking-tight text-white leading-tight">Bio Aurea</span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Lab Hub</span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Central Lab</span>
             </div>
           </div>
 
@@ -94,7 +94,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   onClick={() => setMobileOpen(false)}
                 >
                   <BarChart3 className="h-4.5 w-4.5" />
-                  Dashboard
+                  Painel de Controle
                 </Link>
               )}
             </nav>
@@ -103,10 +103,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="p-4 border-t border-white/5">
             <button
               onClick={handleSignOut}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-pink-400 transition-all hover:bg-pink-400/10 active:scale-95"
+              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-pink-400 transition-all hover:bg- pink-400/10 active:scale-95"
             >
               <LogOut className="h-4.5 w-4.5" />
-              Sign Out
+              Sair da Conta
             </button>
           </div>
         </div>

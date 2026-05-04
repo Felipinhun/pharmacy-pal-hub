@@ -11,12 +11,12 @@ interface RankingTableProps {
   valueLabel?: string;
 }
 
-export function RankingTable({ title, entries, valueLabel = "Revenue" }: RankingTableProps) {
+export function RankingTable({ title, entries, valueLabel = "Receita" }: RankingTableProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-light text-foreground">{title}</h3>
-        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">{valueLabel} Focus</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Foco em {valueLabel}</span>
       </div>
       <div className="space-y-3">
         {entries.map((entry) => (
@@ -55,7 +55,7 @@ export function RankingTable({ title, entries, valueLabel = "Revenue" }: Ranking
         {entries.length === 0 && (
           <div className="py-12 flex flex-col items-center justify-center text-center opacity-30 select-none">
             <div className="h-12 w-12 rounded-full border-2 border-dashed border-current mb-3" />
-            <p className="text-xs font-medium uppercase tracking-widest italic">No data records available</p>
+            <p className="text-xs font-medium uppercase tracking-widest italic">Nenhum registro disponível</p>
           </div>
         )}
       </div>

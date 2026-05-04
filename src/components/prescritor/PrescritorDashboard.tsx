@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { StatCard } from "@/components/StatCard";
-import { DollarSign, TrendingUp, Hash } from "lucide-react";
+import { DollarSign, TrendingUp, Hash, Target } from "lucide-react";
 
 export function PrescritorDashboard() {
   const { user } = useAuth();
   const [sales, setSales] = useState<Array<{ id: string; amount: number; description: string | null; sale_date: string }>>([]);
   const [totalSales, setTotalSales] = useState(0);
   const [ranking, setRanking] = useState<number | null>(null);
+  const [goals, setGoals] = useState<Array<{ id: string; title: string; target_value: number; goal_type: string }>>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -28,20 +29,20 @@ export function PrescritorDashboard() {
 
     if (!prescriber) return;
 
-    const { data: salesData } = await supabase
-      .from("sales")
-      .select("id, amount, description, sale_date")
-      .eq("prescriber_id", prescriber.id)
-      .order("sale_date", { ascending: false });
+    const [salesRes, allSalesRes, goalsRes] = await Promise.all([
+      supabase.from("sales").select("id, amount, description, sale_date").eq("prescriber_id", prescriber.id).order("sale_date", { ascending: false }),
+      supabase.from("sales").select("prescriber_id, amount"),
+      supabase.from("goals").select("*").eq("target_role", "prescritor").eq("is_active", true),
+    ]);
 
-    if (salesData) {
+    if (salesRes.data) {
+      const salesData = salesRes.data;
       setSales(salesData);
       setTotalSales(salesData.reduce((acc, s) => acc + Number(s.amount), 0));
     }
 
-    // Simple ranking: count total sales per prescriber and find position
-    const { data: allSales } = await supabase.from("sales").select("prescriber_id, amount");
-    if (allSales) {
+    if (allSalesRes.data) {
+      const allSales = allSalesRes.data;
       const totals: Record<string, number> = {};
       allSales.forEach((s) => {
         if (s.prescriber_id) {
@@ -52,7 +53,11 @@ export function PrescritorDashboard() {
       const pos = sorted.findIndex(([id]) => id === prescriber.id);
       setRanking(pos >= 0 ? pos + 1 : null);
     }
+
+    if (goalsRes.data) setGoals(goalsRes.data);
   };
+
+  const ticketMedio = sales.length > 0 ? totalSales / sales.length : 0;
 
   return (
     <div>
@@ -74,6 +79,37 @@ export function PrescritorDashboard() {
           icon={Hash}
           description="no ranking geral"
         />
+      </div>
+
+      {/* Gamification / Goals */}
+      <div className="mt-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-foreground">🏆 Metas & Competições</h3>
+        {goals.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma meta ativa no momento.</p>
+        ) : (
+          <div className="space-y-3">
+            {goals.map((goal) => {
+              const current = goal.goal_type === "sales_amount" ? totalSales : goal.goal_type === "sales_count" ? sales.length : goal.goal_type === "ticket_medio" ? ticketMedio : 0;
+              const progress = Math.min((current / Number(goal.target_value)) * 100, 100);
+              return (
+                <div key={goal.id} className="rounded-lg bg-muted/50 p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Target className={`h-5 w-5 ${progress >= 100 ? "text-success" : "text-primary"}`} />
+                      <span className="text-sm font-medium text-foreground">{goal.title}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {progress >= 100 ? "✅ Concluída" : `${Math.round(progress)}%`}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted">
+                    <div className={`h-2 rounded-full transition-all ${progress >= 100 ? "bg-success" : "bg-primary"}`} style={{ width: `${progress}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="mt-6 rounded-xl border border-border bg-card p-6 shadow-sm">

@@ -216,6 +216,7 @@ function UsersManagement({
     try {
       // In Supabase, if the admin inserts into profiles, the user will "link" once they sign up with that email
       const { data, error } = await supabase.from("profiles").insert([{
+        id: crypto.randomUUID(),
         full_name: newUser.full_name,
         email: newUser.email,
       }]).select();

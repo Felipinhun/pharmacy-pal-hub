@@ -29,8 +29,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const RoleIcon = config?.icon ?? Users;
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate({ to: "/login" });
+    try {
+      await signOut();
+      // Use window.location as a fallback to ensure total state reset
+      window.location.href = "/login";
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Even if error, try to force redirect
+      navigate({ to: "/login" });
+    }
   };
 
   return (
@@ -38,12 +45,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       {/* Mobile header */}
       <div className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-white/10 bg-secondary/95 backdrop-blur-md px-6 md:hidden">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
-              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-            </svg>
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white p-1">
+            <img 
+              src="https://s3.bioaurea.cloud/logoeimagens/IMG_6940.PNG" 
+              alt="Logo Bio Aurea" 
+              className="h-full w-full object-contain"
+            />
           </div>
-          <span className="text-lg font-semibold tracking-tight text-white">Bio Aurea</span>
+          <span className="text-lg font-bold tracking-tight text-white">Bio Aurea</span>
         </div>
         <button
           onClick={() => setMobileOpen(!mobileOpen)}
@@ -60,40 +69,42 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         } md:static overflow-hidden`}
       >
         <div className="h-full flex flex-col">
-          <div className="flex h-24 items-center gap-3 px-8">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/20 transition-transform hover:rotate-6">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-6 w-6 text-primary-foreground">
-                <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
-              </svg>
+          <div className="flex h-28 items-center gap-3 px-8">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white p-1.5 shadow-xl transition-all hover:scale-105">
+              <img 
+                src="https://s3.bioaurea.cloud/logoeimagens/IMG_6940.PNG" 
+                alt="Logo Bio Aurea" 
+                className="h-full w-full object-contain"
+              />
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-bold tracking-tight text-white leading-tight">Bio Aurea</span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Central Lab</span>
+              <span className="text-2xl font-black tracking-tighter text-white leading-none">Bio Aurea</span>
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-primary-foreground/70">Central Lab</span>
             </div>
           </div>
 
           <div className="flex-1 px-4 py-6">
-            <div className="mb-8 rounded-2xl bg-white/5 p-4 border border-white/5 backdrop-blur-sm">
+            <div className="mb-8 rounded-[1.5rem] bg-white/10 p-5 border border-white/10 backdrop-blur-md shadow-inner">
               <div className="flex items-center gap-4">
-                <div className={`p-2.5 rounded-xl bg-white/10 ${config?.color}`}>
-                  <RoleIcon className="h-5 w-5" />
+                <div className={`p-3 rounded-2xl bg-white/15 ${config?.color}`}>
+                  <RoleIcon className="h-6 w-6 brightness-125" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{config?.label}</p>
-                  <p className="text-xs text-white/40 truncate">{user?.email}</p>
+                  <p className="text-sm font-bold text-white tracking-wide uppercase">{config?.label}</p>
+                  <p className="text-[10px] font-medium text-white/50 truncate mt-0.5">{user?.email}</p>
                 </div>
               </div>
             </div>
 
-            <nav className="space-y-1.5">
+            <nav className="space-y-2">
               {role && (
                 <Link
                   to={`/${role}` as "/visitadora"}
-                  className="group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/60 transition-all hover:bg-white/5 hover:text-white"
-                  activeProps={{ className: "!bg-primary !text-primary-foreground shadow-lg shadow-primary/20" }}
+                  className="group flex items-center gap-4 rounded-[1.25rem] px-5 py-3.5 text-sm font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white active:scale-[0.97]"
+                  activeProps={{ className: "!bg-primary !text-primary-foreground shadow-2xl shadow-primary/30" }}
                   onClick={() => setMobileOpen(false)}
                 >
-                  <BarChart3 className="h-4.5 w-4.5" />
+                  <BarChart3 className="h-5 w-5" />
                   Painel de Controle
                 </Link>
               )}
@@ -103,7 +114,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="p-4 border-t border-white/5">
             <button
               onClick={handleSignOut}
-              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-pink-400 transition-all hover:bg- pink-400/10 active:scale-95"
+              className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-pink-400 transition-all hover:bg-pink-400/10 active:scale-95"
             >
               <LogOut className="h-4.5 w-4.5" />
               Sair da Conta

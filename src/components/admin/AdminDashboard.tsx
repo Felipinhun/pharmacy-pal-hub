@@ -2,12 +2,17 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { StatCard } from "@/components/StatCard";
 import { RankingTable } from "@/components/RankingTable";
-import { Users, DollarSign, ShieldCheck, TrendingUp, UserPlus } from "lucide-react";
+import { Users, DollarSign, ShieldCheck, TrendingUp, UserPlus, Eye } from "lucide-react";
+import { VisitadoraDashboard } from "@/components/visitadora/VisitadoraDashboard";
+import { AtendenteDashboard } from "@/components/atendente/AtendenteDashboard";
+import { PrescritorDashboard } from "@/components/prescritor/PrescritorDashboard";
 
-type AdminTab = "overview" | "users" | "rankings" | "sales" | "goals";
+type AdminTab = "overview" | "users" | "rankings" | "sales" | "goals" | "simulation";
+type SimulatedRole = "visitadora" | "prescritor" | "atendente";
 
 export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("visitadora");
   const [stats, setStats] = useState({ totalUsers: 0, totalSales: 0, totalPrescribers: 0, totalVisits: 0 });
   const [prescriberRanking, setPrescriberRanking] = useState<Array<{ position: number; name: string; value: string }>>([]);
   const [atendenteRanking, setAtendenteRanking] = useState<Array<{ position: number; name: string; value: string }>>([]);
@@ -89,6 +94,7 @@ export function AdminDashboard() {
     { key: "rankings", label: "Performance" },
     { key: "sales", label: "Vendas" },
     { key: "goals", label: "Metas" },
+    { key: "simulation", label: "Simulação" },
   ];
 
   return (
@@ -155,6 +161,40 @@ export function AdminDashboard() {
       )}
       {activeTab === "sales" && <div className="animate-in fade-in duration-500"><SalesList sales={allSales} /></div>}
       {activeTab === "goals" && <div className="animate-in fade-in duration-500"><GoalsManagement /></div>}
+      {activeTab === "simulation" && (
+        <div className="space-y-6 animate-in fade-in duration-500">
+          <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-2xl border border-primary/10">
+             <Eye className="h-5 w-5 text-primary" />
+             <p className="text-sm font-medium text-primary">Modo de Simulação Administrativa</p>
+             <div className="flex gap-2 ml-auto">
+                <button 
+                  onClick={() => setSimulatedRole("visitadora")}
+                  className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${simulatedRole === "visitadora" ? "bg-primary text-white" : "bg-white text-muted-foreground hover:bg-primary/10"}`}
+                >
+                  Visitadora
+                </button>
+                <button 
+                  onClick={() => setSimulatedRole("atendente")}
+                  className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${simulatedRole === "atendente" ? "bg-primary text-white" : "bg-white text-muted-foreground hover:bg-primary/10"}`}
+                >
+                  Atendente
+                </button>
+                <button 
+                  onClick={() => setSimulatedRole("prescritor")}
+                  className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${simulatedRole === "prescritor" ? "bg-primary text-white" : "bg-white text-muted-foreground hover:bg-primary/10"}`}
+                >
+                  Prescritor
+                </button>
+             </div>
+          </div>
+          
+          <div className="border-t border-dashed border-primary/20 pt-10">
+             {simulatedRole === "visitadora" && <VisitadoraDashboard />}
+             {simulatedRole === "atendente" && <AtendenteDashboard />}
+             {simulatedRole === "prescritor" && <PrescritorDashboard />}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

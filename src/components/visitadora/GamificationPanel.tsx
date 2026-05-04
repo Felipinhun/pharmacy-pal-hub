@@ -8,6 +8,8 @@ export function GamificationPanel() {
   const [achievements, setAchievements] = useState<Array<{ id: string; title: string; description: string | null; badge_icon: string | null; earned_at: string }>>([]);
   const [totalSales, setTotalSales] = useState(0);
   const [prescriberCount, setPrescriberCount] = useState(0);
+  const [visitCount, setVisitCount] = useState(0);
+  const [goals, setGoals] = useState<Array<{ id: string; title: string; target_value: number; goal_type: string }>>([]);
 
   useEffect(() => {
     if (!user) return;
@@ -17,13 +19,17 @@ export function GamificationPanel() {
   const loadData = async () => {
     if (!user) return;
 
-    const [achRes, prescRes, salesRes] = await Promise.all([
+    const [achRes, prescRes, salesRes, visitsRes, goalsRes] = await Promise.all([
       supabase.from("achievements").select("*").eq("user_id", user.id).order("earned_at", { ascending: false }),
       supabase.from("prescribers").select("id").eq("visitadora_id", user.id),
       supabase.from("sales").select("amount, prescriber_id"),
+      supabase.from("visits").select("id").eq("visitadora_id", user.id),
+      supabase.from("goals").select("*").eq("target_role", "visitadora").eq("is_active", true),
     ]);
 
     if (achRes.data) setAchievements(achRes.data);
+    if (visitsRes.data) setVisitCount(visitsRes.data.length);
+    if (goalsRes.data) setGoals(goalsRes.data);
     if (prescRes.data) {
       setPrescriberCount(prescRes.data.length);
       if (salesRes.data) {
@@ -36,41 +42,60 @@ export function GamificationPanel() {
     }
   };
 
-  const goals = [
-    { label: "Cadastrar 10 prescritores", current: prescriberCount, target: 10, icon: Star },
-    { label: "Gerar R$ 5.000 em vendas", current: totalSales, target: 5000, icon: Target },
-    { label: "Cadastrar 25 prescritores", current: prescriberCount, target: 25, icon: Trophy },
-  ];
+  const getCurrentValue = (goalType: string) => {
+    switch (goalType) {
+      case "prescriber_count": return prescriberCount;
+      case "sales_amount": return totalSales;
+      case "sales_count": return 0;
+      case "visit_count": return visitCount;
+      case "ticket_medio": return 0;
+      default: return 0;
+    }
+  };
+
+  const getIcon = (goalType: string) => {
+    switch (goalType) {
+      case "prescriber_count": return Star;
+      case "visit_count": return Target;
+      default: return Trophy;
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* Progress goals */}
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h3 className="mb-4 text-lg font-semibold text-foreground">Metas & Conquistas</h3>
-        <div className="space-y-4">
-          {goals.map((goal, i) => {
-            const progress = Math.min((goal.current / goal.target) * 100, 100);
-            return (
-              <div key={i} className="rounded-lg bg-muted/50 p-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <goal.icon className={`h-5 w-5 ${progress >= 100 ? "text-success" : "text-primary"}`} />
-                    <span className="text-sm font-medium text-foreground">{goal.label}</span>
+        {goals.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma meta definida pelo admin ainda.</p>
+        ) : (
+          <div className="space-y-4">
+            {goals.map((goal) => {
+              const current = getCurrentValue(goal.goal_type);
+              const progress = Math.min((current / Number(goal.target_value)) * 100, 100);
+              const Icon = getIcon(goal.goal_type);
+              return (
+                <div key={goal.id} className="rounded-lg bg-muted/50 p-4">
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon className={`h-5 w-5 ${progress >= 100 ? "text-success" : "text-primary"}`} />
+                      <span className="text-sm font-medium text-foreground">{goal.title}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {progress >= 100 ? "✅ Concluída" : `${Math.round(progress)}%`}
+                    </span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {progress >= 100 ? "✅ Concluída" : `${Math.round(progress)}%`}
-                  </span>
+                  <div className="h-2 rounded-full bg-muted">
+                    <div
+                      className={`h-2 rounded-full transition-all ${progress >= 100 ? "bg-success" : "bg-primary"}`}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="h-2 rounded-full bg-muted">
-                  <div
-                    className={`h-2 rounded-full transition-all ${progress >= 100 ? "bg-success" : "bg-primary"}`}
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Achievements */}

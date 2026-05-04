@@ -4,7 +4,7 @@ import { PrescritorDashboard } from "@/components/prescritor/PrescritorDashboard
 
 export const Route = createFileRoute("/prescritor")({
   head: () => ({
-    meta: [{ title: "Dashboard Prescritor — FarmaGestão" }],
+    meta: [{ title: "Clinical Workspace — Bio Aurea" }],
   }),
   component: PrescritorPage,
 });

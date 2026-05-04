@@ -4,7 +4,7 @@ import { AtendenteDashboard } from "@/components/atendente/AtendenteDashboard";
 
 export const Route = createFileRoute("/atendente")({
   head: () => ({
-    meta: [{ title: "Dashboard Atendente — FarmaGestão" }],
+    meta: [{ title: "Service Desk — Bio Aurea" }],
   }),
   component: AtendentePage,
 });

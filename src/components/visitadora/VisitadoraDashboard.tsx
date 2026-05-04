@@ -57,70 +57,103 @@ export function VisitadoraDashboard() {
   };
 
   const tabs: { key: TabType; label: string; icon: typeof Users }[] = [
-    { key: "dashboard", label: "Dashboard", icon: TrendingUp },
-    { key: "agenda", label: "Agenda", icon: CalendarDays },
-    { key: "cadastro", label: "Cadastrar Prescritor", icon: Users },
-    { key: "checkin", label: "Registro de Visita", icon: ClipboardCheck },
-    { key: "mapa", label: "Mapa", icon: MapPin },
-    { key: "gamificacao", label: "Gamificação", icon: Calendar },
+    { key: "dashboard", label: "Overview", icon: TrendingUp },
+    { key: "agenda", label: "Schedule", icon: CalendarDays },
+    { key: "cadastro", label: "New Prescriber", icon: Users },
+    { key: "checkin", label: "Visit Logs", icon: ClipboardCheck },
+    { key: "mapa", label: "Atlas", icon: MapPin },
+    { key: "gamificacao", label: "Pulse", icon: Calendar },
   ];
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Painel da Visitadora</h1>
-        <p className="text-muted-foreground">Gerencie seus prescritores e acompanhe seus resultados</p>
-      </div>
-
-      {/* Tabs */}
-      <div className="mb-6 flex gap-2 overflow-x-auto border-b border-border pb-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.key
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-          </button>
-        ))}
+    <div className="space-y-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-light tracking-tight text-foreground">
+            Visitadora <span className="font-semibold text-primary">Intelligence</span>
+          </h1>
+          <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+            BIO AUREA PROFESSIONAL SUITE
+          </p>
+        </div>
+        <div className="flex bg-white/40 p-1 rounded-2xl border border-white/20 backdrop-blur-sm self-start">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`relative flex items-center gap-2 rounded-xl px-4 py-2 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                activeTab === tab.key
+                  ? "bg-white text-primary shadow-sm ring-1 ring-black/5"
+                  : "text-muted-foreground/50 hover:text-foreground hover:bg-white/50"
+              }`}
+            >
+              <tab.icon className={`h-3.5 w-3.5 ${activeTab === tab.key ? "text-primary" : ""}`} />
+              <span className="hidden lg:inline">{tab.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {activeTab === "dashboard" && (
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard title="Prescritores" value={prescriberCount} icon={Users} description="cadastrados" />
-            <StatCard title="Visitas Pendentes" value={pendingVisits} icon={Calendar} trend={pendingVisits > 0 ? "up" : "neutral"} />
+        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard title="Total Prescribers" value={prescriberCount} icon={Users} description="Active in your network" />
+            <StatCard title="Awaiting Visits" value={pendingVisits} icon={Calendar} trend={pendingVisits > 0 ? "up" : "neutral"} />
             <StatCard
-              title="Vendas Geradas"
-              value={`R$ ${totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+              title="Revenue Generated"
+              value={`R$ ${totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
               icon={TrendingUp}
+              trend="up"
             />
           </div>
 
-          {/* Pending visits list */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h3 className="mb-4 text-lg font-semibold text-foreground">Visitas do Dia</h3>
-            <VisitsList userId={user?.id} />
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="group relative overflow-hidden rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h3 className="text-2xl font-light text-foreground">Daily <span className="font-semibold">Schedule</span></h3>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 mt-1">Pending actions for today</p>
+                </div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <CalendarDays className="h-6 w-6" />
+                </div>
+              </div>
+              <VisitsList userId={user?.id} />
+            </div>
+            
+            <div className="relative overflow-hidden rounded-[2.5rem] border border-white bg-secondary p-8 text-white shadow-2xl shadow-primary/20">
+               <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/20 blur-[80px]" />
+               <div className="relative">
+                  <h3 className="text-2xl font-light">Network <span className="font-semibold italic">Density</span></h3>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/40 mt-1">Geographic footprint</p>
+                  
+                  <div className="mt-8 flex flex-col gap-6">
+                    <div className="h-32 w-full rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center italic text-white/30 text-xs">
+                      Map preview optimized for professional analysis
+                    </div>
+                    <button 
+                      onClick={() => setActiveTab('mapa')}
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-8 py-3 text-[11px] font-bold uppercase tracking-widest text-primary-foreground shadow-xl shadow-primary/20 transition-transform active:scale-95"
+                    >
+                      Open Global Atlas <MapPin className="h-4 w-4" />
+                    </button>
+                  </div>
+               </div>
+            </div>
           </div>
         </div>
       )}
 
       {activeTab === "cadastro" && (
-        <PrescriberForm onSuccess={loadData} />
+        <div className="max-w-2xl mx-auto animate-in fade-in zoom-in-95 duration-500">
+           <PrescriberForm onSuccess={loadData} />
+        </div>
       )}
 
-      {activeTab === "agenda" && <AgendaPanel />}
-
-      {activeTab === "checkin" && <VisitCheckin />}
-
-      {activeTab === "mapa" && <PrescriberMap prescribers={prescribers} />}
-
-      {activeTab === "gamificacao" && <GamificationPanel />}
+      {activeTab === "agenda" && <div className="animate-in fade-in duration-500"><AgendaPanel /></div>}
+      {activeTab === "checkin" && <div className="animate-in fade-in duration-500"><VisitCheckin /></div>}
+      {activeTab === "mapa" && <div className="animate-in fade-in duration-500"><PrescriberMap prescribers={prescribers} /></div>}
+      {activeTab === "gamificacao" && <div className="animate-in fade-in duration-500"><GamificationPanel /></div>}
     </div>
   );
 }

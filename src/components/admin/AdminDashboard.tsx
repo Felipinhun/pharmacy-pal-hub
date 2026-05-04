@@ -84,62 +84,77 @@ export function AdminDashboard() {
   };
 
   const tabs: { key: AdminTab; label: string }[] = [
-    { key: "overview", label: "Visão Geral" },
-    { key: "users", label: "Usuários" },
-    { key: "rankings", label: "Rankings" },
-    { key: "sales", label: "Vendas" },
-    { key: "goals", label: "Metas" },
+    { key: "overview", label: "Overview" },
+    { key: "users", label: "Registry" },
+    { key: "rankings", label: "Elite Performance" },
+    { key: "sales", label: "Transaction Ledger" },
+    { key: "goals", label: "Strategic Goals" },
   ];
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Painel Administrativo</h1>
-        <p className="text-muted-foreground">Visão completa de todo o sistema</p>
-      </div>
-
-      <div className="mb-6 flex gap-2 overflow-x-auto border-b border-border pb-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === tab.key ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+    <div className="space-y-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-4xl font-light tracking-tight text-foreground">
+            Administrative <span className="font-semibold text-primary">Command</span>
+          </h1>
+          <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+            BIO AUREA EXECUTIVE SUITE
+          </p>
+        </div>
+        <div className="flex bg-white/40 p-1 rounded-2xl border border-white/20 backdrop-blur-sm self-start overflow-x-auto max-w-full">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`relative flex items-center gap-2 rounded-xl px-4 py-2 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-all ${
+                activeTab === tab.key
+                  ? "bg-white text-primary shadow-sm ring-1 ring-black/5"
+                  : "text-muted-foreground/50 hover:text-foreground hover:bg-white/50"
+              }`}
+            >
+              <span className="">{tab.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {activeTab === "overview" && (
-        <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard title="Usuários" value={stats.totalUsers} icon={Users} />
+        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard title="Active Network" value={stats.totalUsers} icon={Users} />
             <StatCard
-              title="Vendas Totais"
-              value={`R$ ${stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+              title="Accumulated Revenue"
+              value={`R$ ${stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
               icon={DollarSign}
             />
-            <StatCard title="Prescritores" value={stats.totalPrescribers} icon={ShieldCheck} />
-            <StatCard title="Visitas" value={stats.totalVisits} icon={TrendingUp} />
+            <StatCard title="Partner Prescribers" value={stats.totalPrescribers} icon={ShieldCheck} />
+            <StatCard title="Field Operations" value={stats.totalVisits} icon={TrendingUp} />
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
-            <RankingTable title="Top Prescritores" entries={prescriberRanking.slice(0, 5)} />
-            <RankingTable title="Top Atendentes" entries={atendenteRanking.slice(0, 5)} />
+            <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
+               <RankingTable title="Prescriber Master Ranking" entries={prescriberRanking.slice(0, 5)} />
+            </div>
+            <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
+               <RankingTable title="Top Performing Staff" entries={atendenteRanking.slice(0, 5)} />
+            </div>
           </div>
         </div>
       )}
 
-      {activeTab === "users" && <UsersManagement users={users} onRefresh={loadData} />}
+      {activeTab === "users" && <div className="animate-in fade-in duration-500"><UsersManagement users={users} onRefresh={loadData} /></div>}
       {activeTab === "rankings" && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <RankingTable title="Ranking de Prescritores" entries={prescriberRanking} />
-          <RankingTable title="Ranking de Atendentes" entries={atendenteRanking} />
+        <div className="grid gap-6 lg:grid-cols-2 animate-in fade-in duration-500">
+          <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
+             <RankingTable title="Prescriber Hall of Fame" entries={prescriberRanking} />
+          </div>
+          <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
+             <RankingTable title="Staff Achievement Board" entries={atendenteRanking} />
+          </div>
         </div>
       )}
-      {activeTab === "sales" && <SalesList sales={allSales} />}
-      {activeTab === "goals" && <GoalsManagement />}
+      {activeTab === "sales" && <div className="animate-in fade-in duration-500"><SalesList sales={allSales} /></div>}
+      {activeTab === "goals" && <div className="animate-in fade-in duration-500"><GoalsManagement /></div>}
     </div>
   );
 }

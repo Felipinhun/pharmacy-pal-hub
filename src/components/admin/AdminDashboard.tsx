@@ -233,6 +233,8 @@ function SalesList({ sales }: { sales: Array<{ id: string; amount: number; descr
 function GoalsManagement() {
   const [goals, setGoals] = useState<Array<{ id: string; title: string; target_value: number; goal_type: string; target_role: string; is_active: boolean }>>([]);
   const [form, setForm] = useState({ title: "", target_value: "", goal_type: "sales_amount", target_role: "atendente" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ title: "", target_value: "", goal_type: "", target_role: "" });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -258,7 +260,47 @@ function GoalsManagement() {
     loadGoals();
   };
 
+  const handleToggleActive = async (id: string, currentActive: boolean) => {
+    await supabase.from("goals").update({ is_active: !currentActive }).eq("id", id);
+    loadGoals();
+  };
+
+  const handleDelete = async (id: string) => {
+    await supabase.from("goals").delete().eq("id", id);
+    loadGoals();
+  };
+
+  const startEdit = (g: { id: string; title: string; target_value: number; goal_type: string; target_role: string }) => {
+    setEditingId(g.id);
+    setEditForm({ title: g.title, target_value: String(g.target_value), goal_type: g.goal_type, target_role: g.target_role });
+  };
+
+  const handleSaveEdit = async (id: string) => {
+    await supabase.from("goals").update({
+      title: editForm.title,
+      target_value: parseFloat(editForm.target_value),
+      goal_type: editForm.goal_type,
+      target_role: editForm.target_role as "visitadora" | "prescritor" | "atendente" | "admin",
+    }).eq("id", id);
+    setEditingId(null);
+    loadGoals();
+  };
+
   const inputClass = "w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring";
+
+  const goalTypeLabels: Record<string, string> = {
+    sales_amount: "Valor de Vendas",
+    sales_count: "Nº de Vendas",
+    ticket_medio: "Ticket Médio",
+    prescriber_count: "Nº de Prescritores",
+    visit_count: "Nº de Visitas",
+  };
+
+  const roleLabels: Record<string, string> = {
+    visitadora: "Visitadora",
+    prescritor: "Prescritor",
+    atendente: "Atendente",
+  };
 
   return (
     <div className="space-y-6">
@@ -271,6 +313,8 @@ function GoalsManagement() {
             <option value="sales_amount">Valor de Vendas</option>
             <option value="sales_count">Nº de Vendas</option>
             <option value="ticket_medio">Ticket Médio</option>
+            <option value="prescriber_count">Nº de Prescritores</option>
+            <option value="visit_count">Nº de Visitas</option>
           </select>
           <select className={inputClass} value={form.target_role} onChange={(e) => setForm({ ...form, target_role: e.target.value })}>
             <option value="atendente">Atendente</option>
@@ -284,27 +328,53 @@ function GoalsManagement() {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h3 className="mb-4 text-lg font-semibold text-foreground">Metas Existentes</h3>
+        <h3 className="mb-4 text-lg font-semibold text-foreground">Metas & Gamificações Existentes</h3>
         {goals.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma meta criada.</p>
         ) : (
           <div className="space-y-2">
-            {goals.map((g) => (
-              <div key={g.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
-                <div>
-                  <p className="font-medium text-foreground">{g.title}</p>
-                  <p className="text-xs text-muted-foreground">{g.target_role} · {g.goal_type}</p>
+            {goals.map((g) =>
+              editingId === g.id ? (
+                <div key={g.id} className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <input className={inputClass} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
+                    <input className={inputClass} type="number" value={editForm.target_value} onChange={(e) => setEditForm({ ...editForm, target_value: e.target.value })} />
+                    <select className={inputClass} value={editForm.goal_type} onChange={(e) => setEditForm({ ...editForm, goal_type: e.target.value })}>
+                      {Object.entries(goalTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                    <select className={inputClass} value={editForm.target_role} onChange={(e) => setEditForm({ ...editForm, target_role: e.target.value })}>
+                      {Object.entries(roleLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button onClick={() => handleSaveEdit(g.id)} className="rounded-lg bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">Salvar</button>
+                    <button onClick={() => setEditingId(null)} className="rounded-lg bg-muted px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:bg-muted/80">Cancelar</button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-foreground">
-                    {g.goal_type === "sales_count" ? g.target_value : `R$ ${Number(g.target_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
-                  </span>
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${g.is_active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-                    {g.is_active ? "Ativa" : "Inativa"}
-                  </span>
+              ) : (
+                <div key={g.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+                  <div>
+                    <p className="font-medium text-foreground">{g.title}</p>
+                    <p className="text-xs text-muted-foreground">{roleLabels[g.target_role] ?? g.target_role} · {goalTypeLabels[g.goal_type] ?? g.goal_type}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-foreground">
+                      {["sales_count", "prescriber_count", "visit_count"].includes(g.goal_type)
+                        ? g.target_value
+                        : `R$ ${Number(g.target_value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+                    </span>
+                    <button
+                      onClick={() => handleToggleActive(g.id, g.is_active)}
+                      className={`rounded-full px-2 py-0.5 text-xs cursor-pointer ${g.is_active ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}
+                    >
+                      {g.is_active ? "Ativa" : "Inativa"}
+                    </button>
+                    <button onClick={() => startEdit(g)} className="rounded-lg bg-muted px-2 py-1 text-xs text-foreground hover:bg-muted/80">✏️</button>
+                    <button onClick={() => handleDelete(g.id)} className="rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive hover:bg-destructive/20">🗑️</button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
         )}
       </div>

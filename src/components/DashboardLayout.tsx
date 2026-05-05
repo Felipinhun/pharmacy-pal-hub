@@ -100,12 +100,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               {role && (
                 <Link
                   to={`/${role}` as "/visitadora"}
-                  className="group flex items-center gap-4 rounded-[1.25rem] px-5 py-3.5 text-sm font-bold text-white/80 transition-all hover:bg-white/10 hover:text-white active:scale-[0.97]"
+                  className="group flex items-center gap-4 rounded-[1.25rem] px-5 py-3.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-[0.97]"
                   activeProps={{ className: "!bg-primary !text-primary-foreground shadow-2xl shadow-primary/30" }}
                   onClick={() => setMobileOpen(false)}
                 >
                   <BarChart3 className="h-5 w-5" />
-                  Painel de Controle
+                  <span className="font-bold tracking-tight">Painel de Controle</span>
                 </Link>
               )}
             </nav>

@@ -24,68 +24,76 @@ export function AdminDashboard() {
   }, []);
 
   const loadData = async () => {
-    const [profilesRes, salesRes, prescribersRes, visitsRes, rolesRes] = await Promise.all([
-      supabase.from("profiles").select("id, full_name, email"),
-      supabase.from("sales").select("*").order("sale_date", { ascending: false }),
-      supabase.from("prescribers").select("id, full_name"),
-      supabase.from("visits").select("id"),
-      supabase.from("user_roles").select("user_id, role"),
-    ]);
+    try {
+      const [profilesRes, salesRes, prescribersRes, visitsRes, rolesRes] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, email"),
+        supabase.from("sales").select("*").order("sale_date", { ascending: false }),
+        supabase.from("prescribers").select("id, full_name"),
+        supabase.from("visits").select("id"),
+        supabase.from("user_roles").select("user_id, role"),
+      ]);
 
-    const profiles = profilesRes.data ?? [];
-    const sales = salesRes.data ?? [];
-    const prescribers = prescribersRes.data ?? [];
-    const roles = rolesRes.data ?? [];
-
-    setStats({
-      totalUsers: profiles.length,
-      totalSales: sales.reduce((acc, s) => acc + Number(s.amount), 0),
-      totalPrescribers: prescribers.length,
-      totalVisits: visitsRes.data?.length ?? 0,
-    });
-
-    setAllSales(sales);
-
-    // Build user list with roles
-    const roleMap: Record<string, string> = {};
-    roles.forEach((r) => { roleMap[r.user_id] = r.role; });
-    setUsers(profiles.map((p) => ({ ...p, role: roleMap[p.id] ?? null })));
-
-    // Prescriber ranking by sales
-    const prescriberTotals: Record<string, number> = {};
-    const prescriberNames: Record<string, string> = {};
-    prescribers.forEach((p) => { prescriberNames[p.id] = p.full_name; });
-    sales.forEach((s) => {
-      if (s.prescriber_id) {
-        prescriberTotals[s.prescriber_id] = (prescriberTotals[s.prescriber_id] || 0) + Number(s.amount);
+      if (profilesRes.error || salesRes.error || rolesRes.error) {
+        console.warn("Alguns dados não puderam ser carregados devido a permissões de RLS.");
       }
-    });
-    const sortedPrescribers = Object.entries(prescriberTotals)
-      .sort((a, b) => b[1] - a[1])
-      .map(([id, total], i) => ({
-        position: i + 1,
-        name: prescriberNames[id] ?? "—",
-        value: `R$ ${total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      }));
-    setPrescriberRanking(sortedPrescribers);
 
-    // Atendente ranking
-    const atendenteTotals: Record<string, number> = {};
-    sales.forEach((s) => {
-      if (s.atendente_id) {
-        atendenteTotals[s.atendente_id] = (atendenteTotals[s.atendente_id] || 0) + Number(s.amount);
-      }
-    });
-    const profileMap: Record<string, string> = {};
-    profiles.forEach((p) => { profileMap[p.id] = p.full_name; });
-    const sortedAtendentes = Object.entries(atendenteTotals)
-      .sort((a, b) => b[1] - a[1])
-      .map(([id, total], i) => ({
-        position: i + 1,
-        name: profileMap[id] ?? "—",
-        value: `R$ ${total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      }));
-    setAtendenteRanking(sortedAtendentes);
+      const profiles = profilesRes.data ?? [];
+      const sales = salesRes.data ?? [];
+      const prescribers = prescribersRes.data ?? [];
+      const roles = rolesRes.data ?? [];
+
+      setStats({
+        totalUsers: profiles.length,
+        totalSales: sales.reduce((acc, s) => acc + Number(s.amount), 0),
+        totalPrescribers: prescribers.length,
+        totalVisits: visitsRes.data?.length ?? 0,
+      });
+
+      setAllSales(sales);
+
+      // Build user list with roles
+      const roleMap: Record<string, string> = {};
+      roles.forEach((r) => { roleMap[r.user_id] = r.role; });
+      setUsers(profiles.map((p) => ({ ...p, role: roleMap[p.id] ?? null })));
+
+      // Prescriber ranking by sales
+      const prescriberTotals: Record<string, number> = {};
+      const prescriberNames: Record<string, string> = {};
+      prescribers.forEach((p) => { prescriberNames[p.id] = p.full_name; });
+      sales.forEach((s) => {
+        if (s.prescriber_id) {
+          prescriberTotals[s.prescriber_id] = (prescriberTotals[s.prescriber_id] || 0) + Number(s.amount);
+        }
+      });
+      const sortedPrescribers = Object.entries(prescriberTotals)
+        .sort((a, b) => b[1] - a[1])
+        .map(([id, total], i) => ({
+          position: i + 1,
+          name: prescriberNames[id] ?? "—",
+          value: `R$ ${total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+        }));
+      setPrescriberRanking(sortedPrescribers);
+
+      // Atendente ranking
+      const atendenteTotals: Record<string, number> = {};
+      sales.forEach((s) => {
+        if (s.atendente_id) {
+          atendenteTotals[s.atendente_id] = (atendenteTotals[s.atendente_id] || 0) + Number(s.amount);
+        }
+      });
+      const profileMap: Record<string, string> = {};
+      profiles.forEach((p) => { profileMap[p.id] = p.full_name; });
+      const sortedAtendentes = Object.entries(atendenteTotals)
+        .sort((a, b) => b[1] - a[1])
+        .map(([id, total], i) => ({
+          position: i + 1,
+          name: profileMap[id] ?? "—",
+          value: `R$ ${total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+        }));
+      setAtendenteRanking(sortedAtendentes);
+    } catch (err) {
+      console.error("Erro ao carregar dados do painel:", err);
+    }
   };
 
   const tabs: { key: AdminTab; label: string }[] = [
@@ -214,23 +222,42 @@ function UsersManagement({
     e.preventDefault();
     setCreating(true);
     try {
-      // In Supabase, if the admin inserts into profiles, the user will "link" once they sign up with that email
-      const { data, error } = await supabase.from("profiles").insert([{
-        id: crypto.randomUUID(),
+      // 1. Inserir no perfil
+      const { data: profiles, error: profileError } = await supabase.from("profiles").insert([{
         full_name: newUser.full_name,
         email: newUser.email,
       }]).select();
 
-      if (data && data[0]) {
-        await supabase.from("user_roles").insert({
-          user_id: data[0].id,
+      if (profileError) {
+        if (profileError.code === "42501") {
+          alert("Erro de Permissão (RLS): O Administrador não tem permissão para criar perfis. Rode o SQL fornecido no Supabase.");
+        } else if (profileError.message.includes("profiles_email_key")) {
+          alert("Este email já está cadastrado.");
+        } else {
+          alert(`Erro ao criar perfil: ${profileError.message}`);
+        }
+        return;
+      }
+
+      // 2. Se o perfil foi criado, atribuir o papel
+      if (profiles && profiles[0]) {
+        const { error: roleError } = await supabase.from("user_roles").insert({
+          user_id: profiles[0].id,
           role: newUser.role as any
         });
+        
+        if (roleError) {
+          alert(`Perfil criado, mas erro ao atribuir papel: ${roleError.message}`);
+        } else {
+          alert("Usuário pré-cadastrado com sucesso!");
+        }
       }
+      
       setNewUser({ full_name: "", email: "", role: "atendente" });
       onRefresh();
     } catch (err) {
       console.error(err);
+      alert("Ocorreu um erro inesperado ao processar a solicitação.");
     } finally {
       setCreating(false);
     }

@@ -20,13 +20,22 @@ export function useAuth() {
   });
 
   const fetchRole = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .limit(1)
-      .single();
-    return (data?.role as AppRole) ?? null;
+    try {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Erro ao buscar papel:", error);
+        return null;
+      }
+      return (data?.role as AppRole) ?? null;
+    } catch (err) {
+      console.error("Falha na consulta de papel:", err);
+      return null;
+    }
   }, []);
 
   useEffect(() => {

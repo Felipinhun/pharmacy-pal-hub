@@ -267,7 +267,7 @@ function UsersManagement({
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h3 className="mb-4 text-lg font-semibold text-foreground">Novo Usuário / Convite</h3>
-        <form onSubmit={handleCreateUser} className="grid gap-4 sm:grid-cols-3">
+        <form onSubmit={handleCreateUser} className="grid gap-4 sm:grid-cols-4">
           <input 
             className="rounded-lg border border-input bg-background px-4 py-2 text-sm" 
             placeholder="Nome Completo" 
@@ -282,6 +282,15 @@ function UsersManagement({
             value={newUser.email}
             onChange={(e) => setNewUser({...newUser, email: e.target.value})}
             required 
+          />
+          <input
+            className="rounded-lg border border-input bg-background px-4 py-2 text-sm"
+            placeholder="Senha inicial"
+            type="password"
+            minLength={6}
+            value={newUser.password}
+            onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+            required
           />
           <div className="flex gap-2">
             <select 

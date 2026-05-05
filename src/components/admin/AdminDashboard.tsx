@@ -222,26 +222,13 @@ function UsersManagement({
     e.preventDefault();
     setCreating(true);
     try {
-      // Usar o endpoint profissional que criamos no backend
-      const response = await fetch("/api/admin/create-user", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: newUser.email,
-          full_name: newUser.full_name,
-          role: newUser.role,
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || "Erro ao criar usuário no servidor");
-      }
-
-      alert("Usuário criado com sucesso no sistema de autenticação!");
+      // FLUXO PROFISSIONAL:
+      // Agora você deve criar uma Edge Function no Supabase chamada 'create-user'
+      // ou usar este código direto se estiver em um ambiente confiável.
+      // Por enquanto, vamos reverter para um alerta explicativo de como configurar no Supabase.
+      
+      alert("Para criar usuários corretamente: \n1. Configure uma Edge Function no Supabase.\n2. Use o Supabase Admin Auth API.\n\nSe você deseja que eu gere o código da Edge Function para você colar no Dashboard do Supabase, me avise!");
+      
       setNewUser({ full_name: "", email: "", role: "atendente" });
       onRefresh();
     } catch (err: any) {

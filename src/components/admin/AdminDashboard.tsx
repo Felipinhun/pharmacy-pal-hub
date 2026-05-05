@@ -222,13 +222,28 @@ function UsersManagement({
     e.preventDefault();
     setCreating(true);
     try {
-      // FLUXO PROFISSIONAL:
-      // Agora você deve criar uma Edge Function no Supabase chamada 'create-user'
-      // ou usar este código direto se estiver em um ambiente confiável.
-      // Por enquanto, vamos reverter para um alerta explicativo de como configurar no Supabase.
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const { data: { session } } = await supabase.auth.getSession();
       
-      alert("Para criar usuários corretamente: \n1. Configure uma Edge Function no Supabase.\n2. Use o Supabase Admin Auth API.\n\nSe você deseja que eu gere o código da Edge Function para você colar no Dashboard do Supabase, me avise!");
+      const res = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token ?? supabaseKey}`,
+          "apikey": supabaseKey,
+        },
+        body: JSON.stringify({
+          email: newUser.email,
+          full_name: newUser.full_name,
+          role: newUser.role,
+        }),
+      });
       
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Erro ao criar usuário");
+      
+      alert(`Usuário ${newUser.full_name} criado com sucesso!`);
       setNewUser({ full_name: "", email: "", role: "atendente" });
       onRefresh();
     } catch (err: any) {

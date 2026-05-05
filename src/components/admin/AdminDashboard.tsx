@@ -6,6 +6,12 @@ import { Users, DollarSign, ShieldCheck, TrendingUp, UserPlus, Eye } from "lucid
 import { VisitadoraDashboard } from "@/components/visitadora/VisitadoraDashboard";
 import { AtendenteDashboard } from "@/components/atendente/AtendenteDashboard";
 import { PrescritorDashboard } from "@/components/prescritor/PrescritorDashboard";
+import {
+  createAdminUser,
+  deleteAdminUser,
+  listAdminUsers,
+  updateAdminUserRole,
+} from "@/server/admin-users.functions";
 
 type AdminTab = "overview" | "users" | "rankings" | "sales" | "goals" | "simulation";
 type SimulatedRole = "visitadora" | "prescritor" | "atendente";
@@ -25,36 +31,31 @@ export function AdminDashboard() {
 
   const loadData = async () => {
     try {
-      const [profilesRes, salesRes, prescribersRes, visitsRes, rolesRes] = await Promise.all([
+      const [adminUsers, profilesRes, salesRes, prescribersRes, visitsRes] = await Promise.all([
+        listAdminUsers(),
         supabase.from("profiles").select("id, full_name, email"),
         supabase.from("sales").select("*").order("sale_date", { ascending: false }),
         supabase.from("prescribers").select("id, full_name"),
         supabase.from("visits").select("id"),
-        supabase.from("user_roles").select("user_id, role"),
       ]);
 
-      if (profilesRes.error || salesRes.error || rolesRes.error) {
+      if (profilesRes.error || salesRes.error) {
         console.warn("Alguns dados não puderam ser carregados devido a permissões de RLS.");
       }
 
       const profiles = profilesRes.data ?? [];
       const sales = salesRes.data ?? [];
       const prescribers = prescribersRes.data ?? [];
-      const roles = rolesRes.data ?? [];
 
       setStats({
-        totalUsers: profiles.length,
+        totalUsers: adminUsers.length,
         totalSales: sales.reduce((acc, s) => acc + Number(s.amount), 0),
         totalPrescribers: prescribers.length,
         totalVisits: visitsRes.data?.length ?? 0,
       });
 
       setAllSales(sales);
-
-      // Build user list with roles
-      const roleMap: Record<string, string> = {};
-      roles.forEach((r) => { roleMap[r.user_id] = r.role; });
-      setUsers(profiles.map((p) => ({ ...p, role: roleMap[p.id] ?? null })));
+      setUsers(adminUsers);
 
       // Prescriber ranking by sales
       const prescriberTotals: Record<string, number> = {};

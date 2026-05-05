@@ -216,37 +216,18 @@ function UsersManagement({
   onRefresh: () => void;
 }) {
   const [changingRole, setChangingRole] = useState<string | null>(null);
-  const [newUser, setNewUser] = useState({ full_name: "", email: "", role: "atendente" });
+  const [newUser, setNewUser] = useState({ full_name: "", email: "", password: "", role: "atendente" });
   const [creating, setCreating] = useState(false);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const { data: { session } } = await supabase.auth.getSession();
+      await createAdminUser({ data: newUser });
       
-      const res = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token ?? supabaseKey}`,
-          "apikey": supabaseKey,
-        },
-        body: JSON.stringify({
-          email: newUser.email,
-          full_name: newUser.full_name,
-          role: newUser.role,
-        }),
-      });
-      
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Erro ao criar usuário");
-      
-      alert(`Usuário ${newUser.full_name} criado com sucesso!`);
-      setNewUser({ full_name: "", email: "", role: "atendente" });
-      onRefresh();
+      alert(`Usuário ${newUser.full_name} criado com sucesso! A senha inicial já foi definida.`);
+      setNewUser({ full_name: "", email: "", password: "", role: "atendente" });
+      await onRefresh();
     } catch (err: any) {
       console.error(err);
       alert(`Falha na criação profissional: ${err.message}`);
@@ -257,20 +238,22 @@ function UsersManagement({
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     setChangingRole(userId);
-    await supabase.from("user_roles").delete().eq("user_id", userId);
-    if (newRole) {
-      await supabase.from("user_roles").insert({ user_id: userId, role: newRole as "visitadora" | "prescritor" | "atendente" | "admin" });
+    try {
+      await updateAdminUserRole({ data: { userId, role: newRole as "visitadora" | "prescritor" | "atendente" | "admin" } });
+      await onRefresh();
+    } catch (err: any) {
+      console.error(err);
+      alert(`Não foi possível alterar o cargo: ${err.message}`);
+    } finally {
+      setChangingRole(null);
     }
-    setChangingRole(null);
-    onRefresh();
   };
 
   const handleDeleteUser = async (userId: string) => {
     if (!confirm("Deseja realmente excluir este usuário? Todos os dados vinculados podem ser afetados.")) return;
-    
-    await supabase.from("user_roles").delete().eq("user_id", userId);
-    await supabase.from("profiles").delete().eq("id", userId);
-    onRefresh();
+
+    await deleteAdminUser({ data: { userId } });
+    await onRefresh();
   };
 
   const roleLabels: Record<string, string> = {

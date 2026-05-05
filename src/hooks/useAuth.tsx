@@ -26,11 +26,12 @@ export function useAuth() {
         .select("role")
         .eq("user_id", userId)
         .maybeSingle();
-      
+
       if (error) {
-        console.error("Erro ao buscar papel:", error);
+        console.error("Erro ao buscar papel:", error.message);
         return null;
       }
+
       return (data?.role as AppRole) ?? null;
     } catch (err) {
       console.error("Falha na consulta de papel:", err);
@@ -38,40 +39,77 @@ export function useAuth() {
     }
   }, []);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (session?.user) {
-          const role = await fetchRole(session.user.id);
-          setState({ user: session.user, session, role, loading: false });
-        } else {
-          setState({ user: null, session: null, role: null, loading: false });
-        }
-      }
-    );
+  const loadUserWithRole = useCallback(async (session: Session | null) => {
+    if (!session) {
+      setState({ user: null, session: null, role: null, loading: false });
+      return;
+    }
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const role = await fetchRole(session.user.id);
-        setState({ user: session.user, session, role, loading: false });
-      } else {
+    try {
+      // 🔥 garante que o user está sincronizado com o token
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
         setState({ user: null, session: null, role: null, loading: false });
+        return;
       }
-    });
 
-    return () => subscription.unsubscribe();
+      // 🔥 pequeno delay pra evitar race condition do Supabase
+      await new Promise((r) => setTimeout(r, 100));
+
+      const role = await fetchRole(user.id);
+
+      setState({
+        user,
+        session,
+        role,
+        loading: false,
+      });
+    } catch (err) {
+      console.error("Erro ao carregar usuário:", err);
+      setState({ user: null, session: null, role: null, loading: false });
+    }
   }, [fetchRole]);
 
+  useEffect(() => {
+    // 🔥 escuta mudanças de auth
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      loadUserWithRole(session);
+    });
+
+    // 🔥 carrega sessão inicial corretamente
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      loadUserWithRole(session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [loadUserWithRole]);
+
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string
+  ) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: {
+        data: { full_name: fullName },
+      },
     });
     if (error) throw error;
   };

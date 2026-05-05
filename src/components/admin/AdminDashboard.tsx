@@ -222,45 +222,31 @@ function UsersManagement({
     e.preventDefault();
     setCreating(true);
     try {
-      // 1. Inserir no perfil
-      // Nota: No Supabase, se 'profiles' usa o ID do auth.users, inserir sem ID criará um UUID novo.
-      // O admin pré-cadastra o email, e o usuário vincula ao logar pela primeira vez se houver trigger,
-      // ou o admin apenas cria o registro para controle interno.
-      const { data: profiles, error: profileError } = await supabase.from("profiles").insert([{
-        full_name: newUser.full_name,
-        email: newUser.email,
-      }]).select();
+      // Usar o endpoint profissional que criamos no backend
+      const response = await fetch("/api/admin/create-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: newUser.email,
+          full_name: newUser.full_name,
+          role: newUser.role,
+        }),
+      });
 
-      if (profileError) {
-        if (profileError.code === "42501" || profileError.code === "42P17") {
-          alert("Erro de Permissão (RLS/Recursão): O Banco de Dados bloqueou a ação. Por favor, execute o script SQL de correção no Supabase.");
-        } else if (profileError.message.includes("profiles_email_key")) {
-          alert("Este email já está cadastrado.");
-        } else {
-          alert(`Erro ao criar perfil: ${profileError.message}`);
-        }
-        return;
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Erro ao criar usuário no servidor");
       }
 
-      // 2. Se o perfil foi criado, atribuir o papel
-      if (profiles && profiles[0]) {
-        const { error: roleError } = await supabase.from("user_roles").insert({
-          user_id: profiles[0].id, // Usando user_id como visto no seu print
-          role: newUser.role as any
-        });
-        
-        if (roleError) {
-          alert(`Perfil criado, mas erro ao atribuir papel: ${roleError.message}`);
-        } else {
-          alert("Usuário pré-cadastrado com sucesso!");
-        }
-      }
-      
+      alert("Usuário criado com sucesso no sistema de autenticação!");
       setNewUser({ full_name: "", email: "", role: "atendente" });
       onRefresh();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Ocorreu um erro inesperado ao processar a solicitação.");
+      alert(`Falha na criação profissional: ${err.message}`);
     } finally {
       setCreating(false);
     }

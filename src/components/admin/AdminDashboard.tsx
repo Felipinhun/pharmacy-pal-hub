@@ -6,6 +6,12 @@ import { Users, DollarSign, ShieldCheck, TrendingUp, UserPlus, Eye } from "lucid
 import { VisitadoraDashboard } from "@/components/visitadora/VisitadoraDashboard";
 import { AtendenteDashboard } from "@/components/atendente/AtendenteDashboard";
 import { PrescritorDashboard } from "@/components/prescritor/PrescritorDashboard";
+import {
+  createAdminUser,
+  deleteAdminUser,
+  listAdminUsers,
+  updateAdminUserRole,
+} from "@/server/admin-users.functions";
 
 type AdminTab = "overview" | "users" | "rankings" | "sales" | "goals" | "simulation";
 type SimulatedRole = "visitadora" | "prescritor" | "atendente";
@@ -25,36 +31,31 @@ export function AdminDashboard() {
 
   const loadData = async () => {
     try {
-      const [profilesRes, salesRes, prescribersRes, visitsRes, rolesRes] = await Promise.all([
+      const [adminUsers, profilesRes, salesRes, prescribersRes, visitsRes] = await Promise.all([
+        listAdminUsers(),
         supabase.from("profiles").select("id, full_name, email"),
         supabase.from("sales").select("*").order("sale_date", { ascending: false }),
         supabase.from("prescribers").select("id, full_name"),
         supabase.from("visits").select("id"),
-        supabase.from("user_roles").select("user_id, role"),
       ]);
 
-      if (profilesRes.error || salesRes.error || rolesRes.error) {
+      if (profilesRes.error || salesRes.error) {
         console.warn("Alguns dados não puderam ser carregados devido a permissões de RLS.");
       }
 
       const profiles = profilesRes.data ?? [];
       const sales = salesRes.data ?? [];
       const prescribers = prescribersRes.data ?? [];
-      const roles = rolesRes.data ?? [];
 
       setStats({
-        totalUsers: profiles.length,
+        totalUsers: adminUsers.length,
         totalSales: sales.reduce((acc, s) => acc + Number(s.amount), 0),
         totalPrescribers: prescribers.length,
         totalVisits: visitsRes.data?.length ?? 0,
       });
 
       setAllSales(sales);
-
-      // Build user list with roles
-      const roleMap: Record<string, string> = {};
-      roles.forEach((r) => { roleMap[r.user_id] = r.role; });
-      setUsers(profiles.map((p) => ({ ...p, role: roleMap[p.id] ?? null })));
+      setUsers(adminUsers);
 
       // Prescriber ranking by sales
       const prescriberTotals: Record<string, number> = {};
@@ -215,37 +216,18 @@ function UsersManagement({
   onRefresh: () => void;
 }) {
   const [changingRole, setChangingRole] = useState<string | null>(null);
-  const [newUser, setNewUser] = useState({ full_name: "", email: "", role: "atendente" });
+  const [newUser, setNewUser] = useState({ full_name: "", email: "", password: "", role: "atendente" });
   const [creating, setCreating] = useState(false);
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-      const { data: { session } } = await supabase.auth.getSession();
+      await createAdminUser({ data: newUser });
       
-      const res = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token ?? supabaseKey}`,
-          "apikey": supabaseKey,
-        },
-        body: JSON.stringify({
-          email: newUser.email,
-          full_name: newUser.full_name,
-          role: newUser.role,
-        }),
-      });
-      
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Erro ao criar usuário");
-      
-      alert(`Usuário ${newUser.full_name} criado com sucesso!`);
-      setNewUser({ full_name: "", email: "", role: "atendente" });
-      onRefresh();
+      alert(`Usuário ${newUser.full_name} criado com sucesso! A senha inicial já foi definida.`);
+      setNewUser({ full_name: "", email: "", password: "", role: "atendente" });
+      await onRefresh();
     } catch (err: any) {
       console.error(err);
       alert(`Falha na criação profissional: ${err.message}`);
@@ -256,20 +238,22 @@ function UsersManagement({
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     setChangingRole(userId);
-    await supabase.from("user_roles").delete().eq("user_id", userId);
-    if (newRole) {
-      await supabase.from("user_roles").insert({ user_id: userId, role: newRole as "visitadora" | "prescritor" | "atendente" | "admin" });
+    try {
+      await updateAdminUserRole({ data: { userId, role: newRole as "visitadora" | "prescritor" | "atendente" | "admin" } });
+      await onRefresh();
+    } catch (err: any) {
+      console.error(err);
+      alert(`Não foi possível alterar o cargo: ${err.message}`);
+    } finally {
+      setChangingRole(null);
     }
-    setChangingRole(null);
-    onRefresh();
   };
 
   const handleDeleteUser = async (userId: string) => {
     if (!confirm("Deseja realmente excluir este usuário? Todos os dados vinculados podem ser afetados.")) return;
-    
-    await supabase.from("user_roles").delete().eq("user_id", userId);
-    await supabase.from("profiles").delete().eq("id", userId);
-    onRefresh();
+
+    await deleteAdminUser({ data: { userId } });
+    await onRefresh();
   };
 
   const roleLabels: Record<string, string> = {
@@ -283,7 +267,7 @@ function UsersManagement({
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h3 className="mb-4 text-lg font-semibold text-foreground">Novo Usuário / Convite</h3>
-        <form onSubmit={handleCreateUser} className="grid gap-4 sm:grid-cols-3">
+        <form onSubmit={handleCreateUser} className="grid gap-4 sm:grid-cols-4">
           <input 
             className="rounded-lg border border-input bg-background px-4 py-2 text-sm" 
             placeholder="Nome Completo" 
@@ -298,6 +282,15 @@ function UsersManagement({
             value={newUser.email}
             onChange={(e) => setNewUser({...newUser, email: e.target.value})}
             required 
+          />
+          <input
+            className="rounded-lg border border-input bg-background px-4 py-2 text-sm"
+            placeholder="Senha inicial"
+            type="password"
+            minLength={6}
+            value={newUser.password}
+            onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+            required
           />
           <div className="flex gap-2">
             <select 

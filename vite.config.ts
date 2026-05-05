@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import tailwindcss from "@tailwindcss/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -15,8 +16,10 @@ export default defineConfig(({ mode }) => {
   return {
     root: ".",
     plugins: [
+      ...tanstackStart(),
       TanStackRouterVite(),
       react(),
+      tsconfigPaths(),
       tailwindcss(),
       VitePWA({
         registerType: "autoUpdate",
@@ -47,6 +50,9 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
+        "#tanstack-router-entry": path.resolve(__dirname, "./node_modules/@tanstack/start-client-core/dist/esm/fake-entries/router.js"),
+        "#tanstack-start-entry": path.resolve(__dirname, "./node_modules/@tanstack/start-client-core/dist/esm/fake-entries/start.js"),
+        "#tanstack-start-plugin-adapters": path.resolve(__dirname, "./node_modules/@tanstack/start-client-core/dist/esm/fake-entries/plugin-adapters.js"),
       },
     },
     server: {

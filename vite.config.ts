@@ -17,7 +17,6 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       TanStackRouterVite(),
-      ...tanstackStart(),
       react(),
       tsconfigPaths(),
       tailwindcss(),
@@ -27,7 +26,7 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
           cleanupOutdatedCaches: true,
-          navigateFallback: null,
+          navigateFallback: "index.html",
         },
         includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
         manifest: {

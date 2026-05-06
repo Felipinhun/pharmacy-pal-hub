@@ -1,56 +1,42 @@
-import { createServerFn } from "@tanstack/react-start";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { Database } from "@/integrations/supabase/types";
 
 const APP_ROLES = ["visitadora", "prescritor", "atendente", "admin"] as const;
 const roleSchema = z.enum(APP_ROLES);
 
-type AdminContext = {
-  supabase: SupabaseClient<Database>;
-  userId: string;
+type AdminUser = {
+  id: string;
+  full_name: string;
+  email: string | null;
+  role: (typeof APP_ROLES)[number] | null;
 };
 
-async function requireAdmin(context: AdminContext) {
-  const { data, error } = await context.supabase.rpc("has_role", {
-    _user_id: context.userId,
-    _role: "admin",
+export async function listAdminUsers() {
+  const [profilesRes, rolesRes] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, email").order("full_name", { ascending: true }),
+    supabase.from("user_roles").select("user_id, role"),
+  ]);
+
+  if (profilesRes.error) throw profilesRes.error;
+  if (rolesRes.error) throw rolesRes.error;
+
+  const roleMap = new Map<string, (typeof APP_ROLES)[number]>();
+  rolesRes.data?.forEach((roleRow) => {
+    if (roleRow.user_id && roleRow.role) {
+      roleMap.set(roleRow.user_id, roleRow.role);
+    }
   });
 
-  if (error || !data) {
-    throw new Error("Apenas administradores podem gerenciar usuários.");
-  }
+  return (profilesRes.data ?? []).map((profile) => ({
+    id: profile.id,
+    full_name: profile.full_name,
+    email: profile.email,
+    role: roleMap.get(profile.id) ?? null,
+  })) as AdminUser[];
 }
 
-export const listAdminUsers = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    await requireAdmin(context as AdminContext);
-
-    const [profilesRes, rolesRes] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id, full_name, email").order("full_name", { ascending: true }),
-      supabaseAdmin.from("user_roles").select("user_id, role"),
-    ]);
-
-    if (profilesRes.error) throw profilesRes.error;
-    if (rolesRes.error) throw rolesRes.error;
-
-    const roleMap = new Map<string, (typeof APP_ROLES)[number]>();
-    rolesRes.data?.forEach((roleRow) => {
-      roleMap.set(roleRow.user_id, roleRow.role);
-    });
-
-    return (profilesRes.data ?? []).map((profile) => ({
-      ...profile,
-      role: roleMap.get(profile.id) ?? null,
-    }));
-  });
-
-export const createAdminUser = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input) =>
+export async function createAdminUser({ data }: { data: { full_name: string; email: string; password: string; role: (typeof APP_ROLES)[number] } }) {
     z
       .object({
         full_name: z.string().trim().min(2, "Informe o nome completo.").max(120),

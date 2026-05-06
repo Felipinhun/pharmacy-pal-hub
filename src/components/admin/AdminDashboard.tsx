@@ -11,7 +11,7 @@ import {
   deleteAdminUser,
   listAdminUsers,
   updateAdminUserRole,
-} from "@/server/admin-users.functions";
+} from "@/server/admin-users.client";
 
 type AdminTab = "overview" | "users" | "rankings" | "sales" | "goals" | "simulation";
 type SimulatedRole = "visitadora" | "prescritor" | "atendente";

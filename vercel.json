@@ -1,4 +1,10 @@
 {
   "version": 2,
-  "outputDirectory": ".output/public"
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

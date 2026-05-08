@@ -64,28 +64,44 @@ export function AdminDashboard() {
         supabase.from("prescribers").select("id, full_name"),
         supabase
           .from("visits")
-          .select("*, prescribers(full_name), profiles:visitadora_id(full_name)")
+          .select("*, prescribers(full_name)")
           .order("created_at", { ascending: false }),
       ]);
 
-      if (profilesRes.error || salesRes.error) {
-        console.warn("Alguns dados não puderam ser carregados devido a permissões de RLS.");
+      if (profilesRes.error || salesRes.error || visitsRes.error) {
+        console.warn("Alguns dados não puderam ser carregados devido a permissões de RLS:", {
+          profiles: profilesRes.error,
+          sales: salesRes.error,
+          visits: visitsRes.error,
+        });
       }
 
       const profiles = profilesRes.data ?? [];
       const sales = salesRes.data ?? [];
       const prescribers = prescribersRes.data ?? [];
+      const visitsRaw = visitsRes.data ?? [];
+
+      const profileMap: Record<string, string> = {};
+      profiles.forEach((p) => {
+        profileMap[p.id] = p.full_name;
+      });
+
+      // Enrich visits with profiles manually since the join might be missing in schema
+      const enrichedVisits = visitsRaw.map((v) => ({
+        ...v,
+        profiles: { full_name: profileMap[v.visitadora_id] ?? "Desconhecida" },
+      }));
 
       setStats({
         totalUsers: adminUsers.length,
         totalSales: sales.reduce((acc, s) => acc + Number(s.amount), 0),
         totalPrescribers: prescribers.length,
-        totalVisits: visitsRes.data?.length ?? 0,
+        totalVisits: enrichedVisits.length,
       });
 
       setAllSales(sales);
       setUsers(adminUsers);
-      setVisits(visitsRes.data || []);
+      setVisits(enrichedVisits);
 
       // Prescriber ranking by sales
       const prescriberTotals: Record<string, number> = {};
@@ -115,10 +131,6 @@ export function AdminDashboard() {
           atendenteTotals[s.atendente_id] =
             (atendenteTotals[s.atendente_id] || 0) + Number(s.amount);
         }
-      });
-      const profileMap: Record<string, string> = {};
-      profiles.forEach((p) => {
-        profileMap[p.id] = p.full_name;
       });
       const sortedAtendentes = Object.entries(atendenteTotals)
         .sort((a, b) => b[1] - a[1])

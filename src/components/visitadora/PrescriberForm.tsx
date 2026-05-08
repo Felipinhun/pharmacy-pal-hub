@@ -52,6 +52,46 @@ export function PrescriberForm({ onSuccess, initialData, onCancel }: PrescriberF
     best_visit_time: initialData?.best_visit_time || "",
   });
 
+  useEffect(() => {
+    if (initialData) {
+      setForm({
+        full_name: initialData.full_name || "",
+        street: initialData.street || "",
+        number: initialData.number || "",
+        neighborhood: initialData.neighborhood || "",
+        city: initialData.city || "",
+        zip_code: initialData.zip_code || "",
+        specialty: initialData.specialty || "",
+        crm_crf: initialData.crm_crf || "",
+        clinic_name: initialData.clinic_name || "",
+        specialization: initialData.specialization || "",
+        partnership_potential: initialData.partnership_potential || "medio",
+        best_visit_day: initialData.best_visit_day || "",
+        best_visit_time: initialData.best_visit_time || "",
+      });
+      setLatitude(initialData.latitude || null);
+      setLongitude(initialData.longitude || null);
+    } else {
+      setForm({
+        full_name: "",
+        street: "",
+        number: "",
+        neighborhood: "",
+        city: "",
+        zip_code: "",
+        specialty: "",
+        crm_crf: "",
+        clinic_name: "",
+        specialization: "",
+        partnership_potential: "medio",
+        best_visit_day: "",
+        best_visit_time: "",
+      });
+      setLatitude(null);
+      setLongitude(null);
+    }
+  }, [initialData]);
+
   const captureLocation = () => {
     if (!navigator.geolocation) {
       alert("Geolocalização não suportada pelo seu navegador.");

@@ -40,8 +40,18 @@ export function VisitadoraDashboard() {
     Array<{
       id: string;
       full_name: string;
+      street: string | null;
+      number: string | null;
+      neighborhood: string | null;
+      city: string | null;
+      zip_code: string | null;
       specialty: string | null;
-      partnership_potential: string | null;
+      crm_crf: string | null;
+      clinic_name: string | null;
+      specialization: string | null;
+      partnership_potential: "baixo" | "medio" | "alto" | null;
+      best_visit_day: string | null;
+      best_visit_time: string | null;
       latitude: number | null;
       longitude: number | null;
     }>
@@ -56,10 +66,7 @@ export function VisitadoraDashboard() {
     if (!user) return;
 
     const [prescRes, visitRes, salesRes] = await Promise.all([
-      supabase
-        .from("prescribers")
-        .select("id, full_name, specialty, partnership_potential, latitude, longitude")
-        .eq("visitadora_id", user.id),
+      supabase.from("prescribers").select("*").eq("visitadora_id", user.id),
       supabase.from("visits").select("id").eq("visitadora_id", user.id).eq("status", "pendente"),
       supabase.from("sales").select("amount, prescriber_id").not("prescriber_id", "is", null),
     ]);

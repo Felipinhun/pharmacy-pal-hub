@@ -13,11 +13,72 @@ import {
   updateAdminUserRole,
 } from "@/server/admin-users.client";
 
-type AdminTab = "overview" | "users" | "rankings" | "sales" | "goals" | "visits" | "simulation";
+type AdminTab =
+  | "overview"
+  | "users"
+  | "prescribers"
+  | "rankings"
+  | "sales"
+  | "goals"
+  | "visits"
+  | "simulation";
 type SimulatedRole = "visitadora" | "prescritor" | "atendente";
+
+interface Profile {
+  id: string;
+  full_name: string;
+  email: string | null;
+  role: string | null;
+}
+
+interface Sale {
+  id: string;
+  amount: number;
+  description: string | null;
+  sale_date: string;
+  prescriber_id: string | null;
+  atendente_id: string | null;
+}
+
+interface Prescriber {
+  id: string;
+  full_name: string;
+  specialty: string | null;
+  crm_crf: string | null;
+  partnership_potential: "baixo" | "medio" | "alto" | null;
+  visitadora_id: string;
+  street?: string;
+  number?: string;
+  neighborhood?: string;
+  city?: string;
+  zip_code?: string;
+  specialization?: string;
+  best_visit_day?: string;
+  best_visit_time?: string;
+  clinic_name?: string;
+  totalSales?: number;
+  salesCount?: number;
+  visitsCount?: number;
+  visitadora_name?: string;
+}
+
+interface Visit {
+  id: string;
+  visit_date: string;
+  checkin_at: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  notes: string | null;
+  status: string;
+  visitadora_id: string;
+  prescriber_id: string;
+  prescribers: { full_name: string } | null;
+  profiles: { full_name: string } | null;
+}
 
 export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  const [selectedVisitadoraId, setSelectedVisitadoraId] = useState<string>("all");
   const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("visitadora");
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -31,25 +92,10 @@ export function AdminDashboard() {
   const [atendenteRanking, setAtendenteRanking] = useState<
     Array<{ position: number; name: string; value: string }>
   >([]);
-  const [allSales, setAllSales] = useState<
-    Array<{ id: string; amount: number; description: string | null; sale_date: string }>
-  >([]);
-  const [users, setUsers] = useState<
-    Array<{ id: string; full_name: string; email: string | null; role: string | null }>
-  >([]);
-  const [visits, setVisits] = useState<
-    Array<{
-      id: string;
-      visit_date: string;
-      checkin_at: string | null;
-      latitude: number | null;
-      longitude: number | null;
-      notes: string | null;
-      status: string;
-      prescribers: { full_name: string } | null;
-      profiles: { full_name: string } | null;
-    }>
-  >([]);
+  const [allSales, setAllSales] = useState<Sale[]>([]);
+  const [users, setUsers] = useState<Profile[]>([]);
+  const [prescribersList, setPrescribersList] = useState<Prescriber[]>([]);
+  const [visits, setVisits] = useState<Visit[]>([]);
 
   useEffect(() => {
     loadData();
@@ -59,9 +105,9 @@ export function AdminDashboard() {
     try {
       const [adminUsers, profilesRes, salesRes, prescribersRes, visitsRes] = await Promise.all([
         listAdminUsers(),
-        supabase.from("profiles").select("id, full_name, email"),
+        supabase.from("profiles").select("id, full_name, email, role"),
         supabase.from("sales").select("*").order("sale_date", { ascending: false }),
-        supabase.from("prescribers").select("id, full_name"),
+        supabase.from("prescribers").select("*"),
         supabase
           .from("visits")
           .select("*, prescribers(full_name)")
@@ -76,32 +122,67 @@ export function AdminDashboard() {
         });
       }
 
-      const profiles = profilesRes.data ?? [];
-      const sales = salesRes.data ?? [];
-      const prescribers = prescribersRes.data ?? [];
-      const visitsRaw = visitsRes.data ?? [];
+      const profiles = (profilesRes.data ?? []) as Profile[];
+      const sales = (salesRes.data ?? []) as Sale[];
+      const prescribers = (prescribersRes.data ?? []) as Prescriber[];
+      const visitsRaw = (visitsRes.data ?? []) as any[];
 
       const profileMap: Record<string, string> = {};
       profiles.forEach((p) => {
         profileMap[p.id] = p.full_name;
       });
 
-      // Enrich visits with profiles manually since the join might be missing in schema
+      // Enrich visits with profiles manually
       const enrichedVisits = visitsRaw.map((v) => ({
         ...v,
         profiles: { full_name: profileMap[v.visitadora_id] ?? "Desconhecida" },
-      }));
+      })) as Visit[];
+
+      // Enrich prescribers with sales and visitadora info
+      const enrichedPrescribers = prescribers.map((p) => {
+        const prescriberSales = sales.filter((s) => s.prescriber_id === p.id);
+        const totalAmount = prescriberSales.reduce((acc, s) => acc + Number(s.amount), 0);
+        const prescriberVisits = enrichedVisits.filter((v) => v.prescriber_id === p.id);
+
+        return {
+          ...p,
+          totalSales: totalAmount,
+          salesCount: prescriberSales.length,
+          visitsCount: prescriberVisits.length,
+          visitadora_name: profileMap[p.visitadora_id] ?? "Não atribuída",
+        } as Prescriber;
+      });
+
+      setPrescribersList(enrichedPrescribers);
+      setAllSales(sales);
+      setUsers(adminUsers as Profile[]);
+      setVisits(enrichedVisits);
+
+      // Filtering logic for initial overview
+      const currentSales =
+        selectedVisitadoraId === "all"
+          ? sales
+          : sales.filter((s) => {
+              const presc = prescribers.find((p) => p.id === s.prescriber_id);
+              return presc?.visitadora_id === selectedVisitadoraId;
+            });
+
+      const currentVisits =
+        selectedVisitadoraId === "all"
+          ? enrichedVisits
+          : enrichedVisits.filter((v) => v.visitadora_id === selectedVisitadoraId);
+
+      const currentPrescribers =
+        selectedVisitadoraId === "all"
+          ? prescribers
+          : prescribers.filter((p) => p.visitadora_id === selectedVisitadoraId);
 
       setStats({
         totalUsers: adminUsers.length,
-        totalSales: sales.reduce((acc, s) => acc + Number(s.amount), 0),
-        totalPrescribers: prescribers.length,
-        totalVisits: enrichedVisits.length,
+        totalSales: currentSales.reduce((acc, s) => acc + Number(s.amount), 0),
+        totalPrescribers: currentPrescribers.length,
+        totalVisits: currentVisits.length,
       });
-
-      setAllSales(sales);
-      setUsers(adminUsers);
-      setVisits(enrichedVisits);
 
       // Prescriber ranking by sales
       const prescriberTotals: Record<string, number> = {};
@@ -109,7 +190,7 @@ export function AdminDashboard() {
       prescribers.forEach((p) => {
         prescriberNames[p.id] = p.full_name;
       });
-      sales.forEach((s) => {
+      currentSales.forEach((s) => {
         if (s.prescriber_id) {
           prescriberTotals[s.prescriber_id] =
             (prescriberTotals[s.prescriber_id] || 0) + Number(s.amount);
@@ -124,9 +205,9 @@ export function AdminDashboard() {
         }));
       setPrescriberRanking(sortedPrescribers);
 
-      // Atendente ranking
+      // Atendente ranking (filtered by sales related to the selected visitadora if needed, but normally global)
       const atendenteTotals: Record<string, number> = {};
-      sales.forEach((s) => {
+      currentSales.forEach((s) => {
         if (s.atendente_id) {
           atendenteTotals[s.atendente_id] =
             (atendenteTotals[s.atendente_id] || 0) + Number(s.amount);
@@ -145,26 +226,103 @@ export function AdminDashboard() {
     }
   };
 
+  // Re-load stats when filter changes
+  useEffect(() => {
+    if (users.length > 0) {
+      // Re-trigger loadData OR filter locally for better performance
+      // Let's filter locally for a snappier experience
+      const profileMap: Record<string, string> = {};
+      users.forEach((u) => {
+        profileMap[u.id] = u.full_name;
+      });
+
+      const currentPrescribers =
+        selectedVisitadoraId === "all"
+          ? prescribersList
+          : prescribersList.filter((p) => p.visitadora_id === selectedVisitadoraId);
+
+      const currentVisits =
+        selectedVisitadoraId === "all"
+          ? visits
+          : visits.filter((v) => v.visitadora_id === selectedVisitadoraId);
+
+      const currentSales =
+        selectedVisitadoraId === "all"
+          ? allSales
+          : allSales.filter((s) => {
+              const presc = prescribersList.find((p) => p.id === s.prescriber_id);
+              return presc?.visitadora_id === selectedVisitadoraId;
+            });
+
+      setStats({
+        totalUsers: users.length,
+        totalSales: currentSales.reduce((acc, s) => acc + Number(s.amount), 0),
+        totalPrescribers: currentPrescribers.length,
+        totalVisits: currentVisits.length,
+      });
+
+      // Update Rankings reactively
+      const prescriberTotals: Record<string, number> = {};
+      currentSales.forEach((s) => {
+        if (s.prescriber_id) {
+          prescriberTotals[s.prescriber_id] =
+            (prescriberTotals[s.prescriber_id] || 0) + Number(s.amount);
+        }
+      });
+      const sortedPrescribers = Object.entries(prescriberTotals)
+        .sort((a, b) => b[1] - a[1])
+        .map(([id, total], i) => ({
+          position: i + 1,
+          name: prescribersList.find((p) => p.id === id)?.full_name ?? "—",
+          value: `R$ ${total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+        }));
+      setPrescriberRanking(sortedPrescribers);
+    }
+  }, [selectedVisitadoraId, users, prescribersList, visits, allSales]);
+
   const tabs: { key: AdminTab; label: string }[] = [
     { key: "overview", label: "Visão Geral" },
-    { key: "users", label: "Gestão de Usuários" },
+    { key: "users", label: "Usuários" },
+    { key: "prescribers", label: "Prescritores" },
     { key: "rankings", label: "Performance" },
     { key: "sales", label: "Vendas" },
     { key: "goals", label: "Metas" },
-    { key: "visits", label: "Relatórios de Visita" },
+    { key: "visits", label: "Visitas" },
     { key: "simulation", label: "Simulação" },
   ];
+
+  const visitadoras = users.filter((u) => u.role === "visitadora");
 
   return (
     <div className="space-y-10">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-light tracking-tight text-foreground">
-            Painel <span className="font-semibold text-primary">Administrativo</span>
-          </h1>
-          <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
-            BIO AUREA — SUÍTE EXECUTIVA
-          </p>
+        <div className="space-y-4">
+          <div>
+            <h1 className="text-4xl font-light tracking-tight text-foreground">
+              Painel <span className="font-semibold text-primary">Administrativo</span>
+            </h1>
+            <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+              BIO AUREA — SISTEMA DE GESTÃO ESTRATÉGICA
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Filtrar por Visitadora:
+            </span>
+            <select
+              value={selectedVisitadoraId}
+              onChange={(e) => setSelectedVisitadoraId(e.target.value)}
+              className="bg-white/50 border border-white/20 rounded-xl px-3 py-1 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 backdrop-blur-sm"
+            >
+              <option value="all">Todas as Profissionais</option>
+              {visitadoras.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="flex bg-white/40 p-1 rounded-2xl border border-white/20 backdrop-blur-sm self-start overflow-x-auto max-w-full">
           {tabs.map((tab) => (
@@ -186,28 +344,86 @@ export function AdminDashboard() {
       {activeTab === "overview" && (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard title="Usuários Ativos" value={stats.totalUsers} icon={Users} />
+            <StatCard title="Total de Usuários" value={stats.totalUsers} icon={Users} />
             <StatCard
-              title="Receita Acumulada"
+              title="Receita Gerada"
               value={`R$ ${stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
               icon={DollarSign}
             />
             <StatCard
-              title="Prescritores Parceiros"
+              title="Prescritores Ativos"
               value={stats.totalPrescribers}
               icon={ShieldCheck}
             />
-            <StatCard title="Operações de Campo" value={stats.totalVisits} icon={TrendingUp} />
+            <StatCard title="Visitas Realizadas" value={stats.totalVisits} icon={TrendingUp} />
           </div>
+
+          {selectedVisitadoraId !== "all" && (
+            <div className="rounded-[2.5rem] border border-primary/20 bg-primary/5 p-8 animate-in zoom-in-95 duration-500">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center text-white text-xl font-bold">
+                  {users.find((u) => u.id === selectedVisitadoraId)?.full_name?.[0]}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-foreground">
+                    Performance de {users.find((u) => u.id === selectedVisitadoraId)?.full_name}
+                  </h3>
+                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-widest">
+                    Análise Individual de Campo
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-3">
+                <div className="bg-white p-6 rounded-3xl border border-black/5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
+                    Conversão Vendas/Visitas
+                  </p>
+                  <p className="text-2xl font-bold text-primary">
+                    {stats.totalVisits > 0
+                      ? (stats.totalSales / stats.totalVisits).toFixed(2)
+                      : "0.00"}
+                    <span className="text-sm ml-1 opacity-50">R$/Visita</span>
+                  </p>
+                </div>
+                <div className="bg-white p-6 rounded-3xl border border-black/5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
+                    Média por Prescritor
+                  </p>
+                  <p className="text-2xl font-bold text-primary">
+                    R${" "}
+                    {stats.totalPrescribers > 0
+                      ? (stats.totalSales / stats.totalPrescribers).toLocaleString("pt-BR", {
+                          maximumFractionDigits: 0,
+                        })
+                      : "0"}
+                  </p>
+                </div>
+                <div className="bg-white p-6 rounded-3xl border border-black/5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">
+                    Atendimento Coberto
+                  </p>
+                  <p className="text-2xl font-bold text-primary">
+                    {prescribersList.filter((p) => p.visitadora_id === selectedVisitadoraId).length}
+                    <span className="text-sm ml-1 opacity-50">Médicos</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
               <RankingTable
-                title="Ranking de Prescritores"
-                entries={prescriberRanking.slice(0, 5)}
+                title="Top Prescritores (Receita)"
+                entries={prescriberRanking.slice(0, 8)}
               />
             </div>
             <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
-              <RankingTable title="Performance da Equipe" entries={atendenteRanking.slice(0, 5)} />
+              <RankingTable
+                title="Performance de Atendentes"
+                entries={atendenteRanking.slice(0, 8)}
+              />
             </div>
           </div>
         </div>
@@ -216,6 +432,19 @@ export function AdminDashboard() {
       {activeTab === "users" && (
         <div className="animate-in fade-in duration-500">
           <UsersManagement users={users} onRefresh={loadData} />
+        </div>
+      )}
+      {activeTab === "prescribers" && (
+        <div className="animate-in fade-in duration-500">
+          <PrescribersManagement
+            prescribers={
+              selectedVisitadoraId === "all"
+                ? prescribersList
+                : prescribersList.filter((p) => p.visitadora_id === selectedVisitadoraId)
+            }
+            visits={visits}
+            sales={allSales}
+          />
         </div>
       )}
       {activeTab === "rankings" && (
@@ -230,7 +459,16 @@ export function AdminDashboard() {
       )}
       {activeTab === "sales" && (
         <div className="animate-in fade-in duration-500">
-          <SalesList sales={allSales} />
+          <SalesList
+            sales={
+              selectedVisitadoraId === "all"
+                ? allSales
+                : allSales.filter((s) => {
+                    const presc = prescribersList.find((p) => p.id === s.prescriber_id);
+                    return presc?.visitadora_id === selectedVisitadoraId;
+                  })
+            }
+          />
         </div>
       )}
       {activeTab === "goals" && (
@@ -240,7 +478,13 @@ export function AdminDashboard() {
       )}
       {activeTab === "visits" && (
         <div className="animate-in fade-in duration-500">
-          <VisitsReport visits={visits} />
+          <VisitsReport
+            visits={
+              selectedVisitadoraId === "all"
+                ? visits
+                : visits.filter((v) => v.visitadora_id === selectedVisitadoraId)
+            }
+          />
         </div>
       )}
       {activeTab === "simulation" && (
@@ -274,6 +518,272 @@ export function AdminDashboard() {
             {simulatedRole === "visitadora" && <VisitadoraDashboard />}
             {simulatedRole === "atendente" && <AtendenteDashboard />}
             {simulatedRole === "prescritor" && <PrescritorDashboard />}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PrescribersManagement({
+  prescribers,
+  visits,
+  sales,
+}: {
+  prescribers: Prescriber[];
+  visits: Visit[];
+  sales: Sale[];
+}) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedPrescriber, setSelectedPrescriber] = useState<Prescriber | null>(null);
+
+  const filteredPrescribers = prescribers.filter(
+    (p) =>
+      p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.specialty?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.crm_crf?.toLowerCase().includes(searchTerm.toLowerCase()),
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="text-xl font-semibold text-foreground">Gestão de Prescritores</h3>
+        <div className="flex-1 max-w-md">
+          <input
+            type="text"
+            placeholder="Buscar por nome, especialidade ou CRM..."
+            className="w-full rounded-xl border border-border bg-white/50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 backdrop-blur-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filteredPrescribers.map((p) => (
+          <div
+            key={p.id}
+            onClick={() => setSelectedPrescriber(p)}
+            className="group cursor-pointer rounded-3xl border border-white bg-white/40 p-6 shadow-sm shadow-primary/5 backdrop-blur-xl transition-all hover:scale-[1.02] hover:shadow-primary/10 active:scale-95"
+          >
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h4 className="font-bold text-foreground group-hover:text-primary transition-colors">
+                  {p.full_name}
+                </h4>
+                <p className="text-xs text-muted-foreground uppercase font-bold tracking-tight">
+                  {p.specialty || "Sem especialidade"} · {p.crm_crf || "Sem CRM"}
+                </p>
+              </div>
+              <div
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                  p.partnership_potential === "alto"
+                    ? "bg-success/10 text-success"
+                    : p.partnership_potential === "medio"
+                      ? "bg-warning/10 text-warning"
+                      : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {p.partnership_potential || "Neutro"}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-50">
+                  Visitas
+                </p>
+                <p className="text-lg font-bold text-foreground">
+                  {visits.filter((v) => v.prescriber_id === p.id).length}
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-50">
+                  Receita Total
+                </p>
+                <p className="text-lg font-bold text-primary">
+                  R${" "}
+                  {sales
+                    .filter((s) => s.prescriber_id === p.id)
+                    .reduce((acc, s) => acc + Number(s.amount), 0)
+                    .toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-black/5 flex items-center justify-between">
+              <p className="text-[10px] text-muted-foreground italic">
+                Sempre visitado(a) por: <span className="font-bold">{p.visitadora_name}</span>
+              </p>
+              <button className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                <Eye className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {selectedPrescriber && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl border border-white w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-8 border-b border-black/5 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">
+                  {selectedPrescriber.full_name}
+                </h2>
+                <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest">
+                  Ficha Detalhada do Prescritor
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedPrescriber(null)}
+                className="rounded-full bg-muted/50 p-3 text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
+              >
+                <span className="text-xl">✕</span>
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 space-y-8">
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="col-span-2 grid grid-cols-2 gap-6 bg-primary/5 p-6 rounded-3xl border border-primary/10">
+                  <div>
+                    <h5 className="text-[10px] font-bold text-primary uppercase mb-2">
+                      Dados Técnicos
+                    </h5>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Especialidade</p>
+                        <p className="font-semibold">{selectedPrescriber.specialty || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Especialização Principal</p>
+                        <p className="font-semibold">{selectedPrescriber.specialization || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">CRM / CRF</p>
+                        <p className="font-semibold">{selectedPrescriber.crm_crf || "—"}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h5 className="text-[10px] font-bold text-primary uppercase mb-2">Visitação</h5>
+                    <div className="space-y-4">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Melhor Dia</p>
+                        <p className="font-semibold">{selectedPrescriber.best_visit_day || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Melhor Horário</p>
+                        <p className="font-semibold">{selectedPrescriber.best_visit_time || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Nome da Clínica</p>
+                        <p className="font-semibold">{selectedPrescriber.clinic_name || "—"}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-muted/30 p-6 rounded-3xl border border-border/50">
+                  <h5 className="text-[10px] font-bold text-muted-foreground uppercase mb-4">
+                    Localização
+                  </h5>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Endereço</p>
+                      <p className="text-sm font-medium">
+                        {selectedPrescriber.street}, {selectedPrescriber.number}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Bairro / Cidade</p>
+                      <p className="text-sm font-medium">
+                        {selectedPrescriber.neighborhood} · {selectedPrescriber.city}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">CEP</p>
+                      <p className="text-sm font-medium">{selectedPrescriber.zip_code || "—"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <h5 className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-2">
+                    <TrendingUp className="h-3 w-3" /> Histórico de Relatórios (Campo)
+                  </h5>
+                  <div className="space-y-3">
+                    {visits.filter((v) => v.prescriber_id === selectedPrescriber.id).slice(0, 5)
+                      .length === 0 && (
+                      <p className="text-sm text-muted-foreground italic bg-muted/20 p-4 rounded-2xl">
+                        Nenhuma visita registrada para este prescritor.
+                      </p>
+                    )}
+                    {visits
+                      .filter((v) => v.prescriber_id === selectedPrescriber.id)
+                      .slice(0, 5)
+                      .map((v) => (
+                        <div key={v.id} className="p-4 rounded-2xl bg-white border border-black/5">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                              {v.visit_date}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              Por: {v.profiles?.full_name}
+                            </span>
+                          </div>
+                          <p className="text-sm text-foreground/80 line-clamp-3">
+                            {v.notes ? `"${v.notes}"` : "Sem observações."}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h5 className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-2">
+                    <DollarSign className="h-3 w-3" /> Registro de Conversões (Vendas)
+                  </h5>
+                  <div className="space-y-3">
+                    {sales.filter((s) => s.prescriber_id === selectedPrescriber.id).slice(0, 5)
+                      .length === 0 && (
+                      <p className="text-sm text-muted-foreground italic bg-muted/20 p-4 rounded-2xl">
+                        Nenhuma venda vinculada a este prescritor ainda.
+                      </p>
+                    )}
+                    {sales
+                      .filter((s) => s.prescriber_id === selectedPrescriber.id)
+                      .slice(0, 5)
+                      .map((s) => (
+                        <div
+                          key={s.id}
+                          className="flex items-center justify-between p-4 rounded-2xl bg-white border border-black/5"
+                        >
+                          <div>
+                            <p className="text-sm font-bold text-foreground">
+                              {s.description || "Venda Registrada"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">{s.sale_date}</p>
+                          </div>
+                          <span className="font-bold text-success">
+                            R${" "}
+                            {Number(s.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 bg-muted/50 border-t border-black/5 flex justify-end">
+              <button
+                onClick={() => setSelectedPrescriber(null)}
+                className="px-6 py-2 rounded-xl bg-foreground text-background text-sm font-bold hover:opacity-90 transition-all"
+              >
+                Fechar Ficha
+              </button>
+            </div>
           </div>
         </div>
       )}

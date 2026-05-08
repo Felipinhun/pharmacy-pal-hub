@@ -6,8 +6,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Clock, User, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { format, isSameDay, parseISO } from "date-fns";
@@ -106,10 +118,7 @@ export function AgendaPanel() {
   };
 
   const updateStatus = async (id: string, status: string) => {
-    const { error } = await supabase
-      .from("appointments")
-      .update({ status })
-      .eq("id", id);
+    const { error } = await supabase.from("appointments").update({ status }).eq("id", id);
     if (error) {
       toast.error("Erro ao atualizar");
       return;
@@ -139,24 +148,42 @@ export function AgendaPanel() {
 
   // Appointments for the selected date
   const dayAppointments = useMemo(() => {
-    return appointments.filter((a) =>
-      isSameDay(parseISO(a.appointment_date), selectedDate)
-    );
+    return appointments
+      .filter((a) => isSameDay(parseISO(a.appointment_date), selectedDate))
+      .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time));
   }, [appointments, selectedDate]);
+
+  const pendingAppointments = useMemo(() => {
+    return dayAppointments.filter((a) => a.status === "agendado");
+  }, [dayAppointments]);
+
+  const completedAppointments = useMemo(() => {
+    return dayAppointments.filter((a) => a.status === "concluido");
+  }, [dayAppointments]);
+
+  const cancelledAppointments = useMemo(() => {
+    return dayAppointments.filter((a) => a.status === "cancelado");
+  }, [dayAppointments]);
 
   const statusColor = (status: string) => {
     switch (status) {
-      case "concluido": return "bg-success/10 text-success";
-      case "cancelado": return "bg-destructive/10 text-destructive";
-      default: return "bg-primary/10 text-primary";
+      case "concluido":
+        return "bg-success/10 text-success";
+      case "cancelado":
+        return "bg-destructive/10 text-destructive";
+      default:
+        return "bg-primary/10 text-primary";
     }
   };
 
   const statusLabel = (status: string) => {
     switch (status) {
-      case "concluido": return "Concluído";
-      case "cancelado": return "Cancelado";
-      default: return "Agendado";
+      case "concluido":
+        return "Concluído";
+      case "cancelado":
+        return "Cancelado";
+      default:
+        return "Agendado";
     }
   };
 
@@ -186,7 +213,9 @@ export function AgendaPanel() {
                     <SelectContent>
                       <SelectItem value="none">Nenhum (digitar nome)</SelectItem>
                       {prescribers.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>{p.full_name}</SelectItem>
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.full_name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -207,7 +236,8 @@ export function AgendaPanel() {
                   {format(selectedDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Selecione a data no calendário antes de abrir este formulário, ou feche e selecione.
+                  Selecione a data no calendário antes de abrir este formulário, ou feche e
+                  selecione.
                 </p>
               </div>
               <div className="space-y-2">
@@ -253,65 +283,157 @@ export function AgendaPanel() {
 
         {/* Day appointments */}
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-semibold text-foreground">
-            {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
-          </h3>
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-foreground">
+              {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
+            </h3>
+            {dayAppointments.length > 0 && (
+              <div className="flex items-center gap-2 text-xs font-medium">
+                <span className="text-success">{completedAppointments.length} concluídas</span>
+                <span className="text-muted-foreground">/</span>
+                <span className="text-primary">{dayAppointments.length} total</span>
+              </div>
+            )}
+          </div>
+
           {dayAppointments.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum agendamento para este dia.</p>
           ) : (
-            <div className="space-y-3">
-              {dayAppointments.map((apt) => (
-                <div
-                  key={apt.id}
-                  className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-center text-sm font-medium text-primary">
-                      <Clock className="h-4 w-4" />
-                      <span>{apt.appointment_time.slice(0, 5)}</span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <User className="h-3 w-3 text-muted-foreground" />
-                        <p className="font-medium text-foreground">{apt.contact_name}</p>
+            <div className="space-y-6">
+              {/* Penting Section */}
+              {pendingAppointments.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Próximas Visitas ({pendingAppointments.length})
+                  </h4>
+                  {pendingAppointments.map((apt) => (
+                    <div
+                      key={apt.id}
+                      className="flex items-center justify-between rounded-lg bg-primary/5 border border-primary/10 px-4 py-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center text-sm font-medium text-primary">
+                          <Clock className="h-4 w-4" />
+                          <span>{apt.appointment_time.slice(0, 5)}</span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            <p className="font-medium text-foreground">{apt.contact_name}</p>
+                          </div>
+                          {apt.notes && (
+                            <p className="text-xs text-muted-foreground mt-1">{apt.notes}</p>
+                          )}
+                        </div>
                       </div>
-                      {apt.notes && (
-                        <p className="text-xs text-muted-foreground mt-1">{apt.notes}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusColor(apt.status)}`}>
-                      {statusLabel(apt.status)}
-                    </span>
-                    {apt.status === "agendado" && (
-                      <>
+                      <div className="flex items-center gap-2">
                         <button
                           onClick={() => updateStatus(apt.id, "concluido")}
                           title="Marcar como concluído"
-                          className="rounded p-1 text-success hover:bg-success/10"
+                          className="rounded p-1 text-success hover:bg-success/10 transition-colors"
                         >
-                          <CheckCircle className="h-4 w-4" />
+                          <CheckCircle className="h-5 w-5" />
                         </button>
                         <button
                           onClick={() => updateStatus(apt.id, "cancelado")}
                           title="Cancelar"
-                          className="rounded p-1 text-destructive hover:bg-destructive/10"
+                          className="rounded p-1 text-destructive hover:bg-destructive/10 transition-colors"
                         >
-                          <XCircle className="h-4 w-4" />
+                          <XCircle className="h-5 w-5" />
                         </button>
-                      </>
-                    )}
-                    <button
-                      onClick={() => deleteAppointment(apt.id)}
-                      title="Excluir"
-                      className="rounded p-1 text-muted-foreground hover:bg-muted"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                        <button
+                          onClick={() => deleteAppointment(apt.id)}
+                          title="Excluir"
+                          className="rounded p-1 text-muted-foreground hover:bg-muted/80 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {/* Completed Section */}
+              {completedAppointments.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-success/70">
+                    Concluídas ({completedAppointments.length})
+                  </h4>
+                  {completedAppointments.map((apt) => (
+                    <div
+                      key={apt.id}
+                      className="flex items-center justify-between rounded-lg bg-success/5 border border-success/10 px-4 py-3 opacity-80"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center text-sm font-medium text-success opacity-70">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>{apt.appointment_time.slice(0, 5)}</span>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <User className="h-3 w-3 text-muted-foreground" />
+                            <p className="font-medium text-foreground line-through opacity-70">
+                              {apt.contact_name}
+                            </p>
+                          </div>
+                          {apt.notes && (
+                            <p className="text-xs text-muted-foreground mt-1 line-through opacity-50">
+                              {apt.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] bg-success/20 text-success px-2 py-0.5 rounded-full font-bold uppercase">
+                          OK
+                        </span>
+                        <button
+                          onClick={() => deleteAppointment(apt.id)}
+                          title="Excluir"
+                          className="rounded p-1 text-muted-foreground hover:bg-muted/80 ml-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Cancelled Section */}
+              {cancelledAppointments.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Canceladas ({cancelledAppointments.length})
+                  </h4>
+                  {cancelledAppointments.map((apt) => (
+                    <div
+                      key={apt.id}
+                      className="flex items-center justify-between rounded-lg bg-muted/30 px-4 py-3 opacity-60"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-center text-sm font-medium text-muted-foreground">
+                          <XCircle className="h-4 w-4" />
+                          <span>{apt.appointment_time.slice(0, 5)}</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-muted-foreground line-through">
+                            {apt.contact_name}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => deleteAppointment(apt.id)}
+                        title="Excluir"
+                        className="rounded p-1 text-muted-foreground hover:bg-muted/80"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

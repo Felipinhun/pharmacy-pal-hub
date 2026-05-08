@@ -225,19 +225,21 @@ export function PrescriberForm({ onSuccess, initialData, onCancel }: PrescriberF
               />
             </div>
             <div>
-              <label className={labelClass}>CRM / CRF</label>
+              <label className={labelClass}>CRM / CRF *</label>
               <input
                 className={inputClass}
                 value={form.crm_crf}
                 onChange={(e) => updateField("crm_crf", e.target.value)}
+                required
               />
             </div>
             <div>
-              <label className={labelClass}>Especialidade</label>
+              <label className={labelClass}>Especialidade *</label>
               <input
                 className={inputClass}
                 value={form.specialty}
                 onChange={(e) => updateField("specialty", e.target.value)}
+                required
               />
             </div>
             <div>
@@ -249,11 +251,12 @@ export function PrescriberForm({ onSuccess, initialData, onCancel }: PrescriberF
               />
             </div>
             <div>
-              <label className={labelClass}>Nome da Clínica</label>
+              <label className={labelClass}>Nome da Clínica *</label>
               <input
                 className={inputClass}
                 value={form.clinic_name}
                 onChange={(e) => updateField("clinic_name", e.target.value)}
+                required
               />
             </div>
           </div>
@@ -266,35 +269,39 @@ export function PrescriberForm({ onSuccess, initialData, onCancel }: PrescriberF
           </h4>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="sm:col-span-2 lg:col-span-2">
-              <label className={labelClass}>Rua</label>
+              <label className={labelClass}>Rua *</label>
               <input
                 className={inputClass}
                 value={form.street}
                 onChange={(e) => updateField("street", e.target.value)}
+                required
               />
             </div>
             <div>
-              <label className={labelClass}>Número</label>
+              <label className={labelClass}>Número *</label>
               <input
                 className={inputClass}
                 value={form.number}
                 onChange={(e) => updateField("number", e.target.value)}
+                required
               />
             </div>
             <div>
-              <label className={labelClass}>Bairro</label>
+              <label className={labelClass}>Bairro *</label>
               <input
                 className={inputClass}
                 value={form.neighborhood}
                 onChange={(e) => updateField("neighborhood", e.target.value)}
+                required
               />
             </div>
             <div>
-              <label className={labelClass}>Cidade</label>
+              <label className={labelClass}>Cidade *</label>
               <input
                 className={inputClass}
                 value={form.city}
                 onChange={(e) => updateField("city", e.target.value)}
+                required
               />
             </div>
             <div>
@@ -315,7 +322,7 @@ export function PrescriberForm({ onSuccess, initialData, onCancel }: PrescriberF
           </h4>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className={labelClass}>Potencial da Parceria</label>
+              <label className={labelClass}>Potencial da Parceria *</label>
               <select
                 className={inputClass}
                 value={form.partnership_potential}
@@ -329,21 +336,23 @@ export function PrescriberForm({ onSuccess, initialData, onCancel }: PrescriberF
               </select>
             </div>
             <div>
-              <label className={labelClass}>Melhor Dia para Visita</label>
+              <label className={labelClass}>Melhor Dia para Visita *</label>
               <input
                 className={inputClass}
                 value={form.best_visit_day}
                 onChange={(e) => updateField("best_visit_day", e.target.value)}
                 placeholder="Ex: Segunda-feira"
+                required
               />
             </div>
             <div>
-              <label className={labelClass}>Melhor Horário</label>
+              <label className={labelClass}>Melhor Horário *</label>
               <input
                 className={inputClass}
                 value={form.best_visit_time}
                 onChange={(e) => updateField("best_visit_time", e.target.value)}
                 placeholder="Ex: 14:00"
+                required
               />
             </div>
           </div>

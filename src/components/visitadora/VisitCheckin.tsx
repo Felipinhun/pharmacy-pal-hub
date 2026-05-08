@@ -219,12 +219,13 @@ export function VisitCheckin() {
           </div>
 
           <div>
-            <label className={labelClass}>Observações da Visita</label>
+            <label className={labelClass}>Observações da Visita *</label>
             <textarea
               className={`${inputClass} min-h-[100px] resize-y`}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Descreva como foi a visita..."
+              required
             />
           </div>
 

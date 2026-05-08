@@ -119,6 +119,12 @@ export function PrescriberForm({ onSuccess, initialData, onCancel }: PrescriberF
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    
+    if (latitude === null || longitude === null) {
+      alert("A localização (GPS) é obrigatória para o cadastro do prescritor.");
+      return;
+    }
+
     setSubmitting(true);
     setSuccess(false);
 
@@ -357,7 +363,7 @@ export function PrescriberForm({ onSuccess, initialData, onCancel }: PrescriberF
             </div>
           </div>
           <div className="mt-4">
-            <label className={labelClass}>Localização (GPS)</label>
+            <label className={labelClass}>Localização (GPS) *</label>
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -386,7 +392,7 @@ export function PrescriberForm({ onSuccess, initialData, onCancel }: PrescriberF
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || latitude === null || longitude === null}
           className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
         >
           {submitting ? "Salvando..." : initialData ? "Salvar Alterações" : "Cadastrar Prescritor"}

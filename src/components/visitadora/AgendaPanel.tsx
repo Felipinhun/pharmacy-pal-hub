@@ -41,9 +41,17 @@ interface Prescriber {
   full_name: string;
 }
 
+interface Visit {
+  id: string;
+  visit_date: string;
+  status: string;
+  prescribers: { full_name: string } | null;
+}
+
 export function AgendaPanel() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [visits, setVisits] = useState<Visit[]>([]);
   const [prescribers, setPrescribers] = useState<Prescriber[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,6 +66,7 @@ export function AgendaPanel() {
   useEffect(() => {
     if (!user) return;
     loadAppointments();
+    loadVisits();
     loadPrescribers();
   }, [user]);
 
@@ -70,6 +79,15 @@ export function AgendaPanel() {
       .order("appointment_date", { ascending: true })
       .order("appointment_time", { ascending: true });
     if (data) setAppointments(data);
+  };
+
+  const loadVisits = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("visits")
+      .select("id, visit_date, status, prescribers(full_name)")
+      .eq("visitadora_id", user.id);
+    if (data) setVisits(data as any);
   };
 
   const loadPrescribers = async () => {
@@ -137,13 +155,14 @@ export function AgendaPanel() {
     loadAppointments();
   };
 
-  // Dates that have appointments (for calendar highlighting)
-  const datesWithAppointments = useMemo(() => {
-    // Return an array of strings in YYYY-MM-DD format for easier comparison
-    return appointments.map((a) => a.appointment_date);
-  }, [appointments]);
+  // Dates that have activity
+  const datesWithActivity = useMemo(() => {
+    const dates = new Set<string>();
+    appointments.forEach((a) => dates.add(a.appointment_date));
+    visits.forEach((v) => dates.add(v.visit_date));
+    return Array.from(dates);
+  }, [appointments, visits]);
 
-  // Appointments for the selected date
   const dayAppointments = useMemo(() => {
     const selectedStr = format(selectedDate, "yyyy-MM-dd");
     return appointments
@@ -151,13 +170,34 @@ export function AgendaPanel() {
       .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time));
   }, [appointments, selectedDate]);
 
+  const dayVisits = useMemo(() => {
+    const selectedStr = format(selectedDate, "yyyy-MM-dd");
+    return visits.filter((v) => v.visit_date === selectedStr);
+  }, [visits, selectedDate]);
+
   const pendingAppointments = useMemo(() => {
     return dayAppointments.filter((a) => a.status === "agendado");
   }, [dayAppointments]);
 
-  const completedAppointments = useMemo(() => {
-    return dayAppointments.filter((a) => a.status === "concluido");
-  }, [dayAppointments]);
+  const completedActivities = useMemo(() => {
+    const completedApts = dayAppointments
+      .filter((a) => a.status === "concluido")
+      .map((a) => ({ 
+        id: a.id, 
+        name: a.contact_name, 
+        type: "appointment" as const,
+        time: a.appointment_time.slice(0, 5)
+      }));
+    
+    const completedVisits = dayVisits.map((v) => ({
+      id: v.id,
+      name: (v.prescribers as any)?.full_name ?? "—",
+      type: "visit" as const,
+      time: "--:--"
+    }));
+
+    return [...completedApts, ...completedVisits];
+  }, [dayAppointments, dayVisits]);
 
   const cancelledAppointments = useMemo(() => {
     return dayAppointments.filter((a) => a.status === "cancelado");
@@ -275,10 +315,10 @@ export function AgendaPanel() {
             modifiers={{
               hasAppointment: (date) => {
                 const dateStr = format(date, "yyyy-MM-dd");
-                return datesWithAppointments.includes(dateStr);
+                return datesWithActivity.includes(dateStr);
               },
             }}
-            modifiersClassNames={{
+            classNames={{
               hasAppointment: "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:size-1 after:rounded-full after:bg-primary after:content-['']",
             }}
           />
@@ -290,20 +330,20 @@ export function AgendaPanel() {
             <h3 className="text-lg font-semibold text-foreground">
               {format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
             </h3>
-            {dayAppointments.length > 0 && (
+            {dayAppointments.length + dayVisits.length > 0 && (
               <div className="flex items-center gap-2 text-xs font-medium">
-                <span className="text-success">{completedAppointments.length} concluídas</span>
+                <span className="text-success">{completedActivities.length} concluídas</span>
                 <span className="text-muted-foreground">/</span>
-                <span className="text-primary">{dayAppointments.length} total</span>
+                <span className="text-primary">{dayAppointments.length + dayVisits.length} total</span>
               </div>
             )}
           </div>
 
-          {dayAppointments.length === 0 ? (
+          {dayAppointments.length === 0 && dayVisits.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum agendamento para este dia.</p>
           ) : (
             <div className="space-y-6">
-              {/* Penting Section */}
+              {/* Pending Section */}
               {pendingAppointments.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -358,46 +398,46 @@ export function AgendaPanel() {
               )}
 
               {/* Completed Section */}
-              {completedAppointments.length > 0 && (
+              {completedActivities.length > 0 && (
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-success/70">
-                    Concluídas ({completedAppointments.length})
+                    Concluídas / Check-ins ({completedActivities.length})
                   </h4>
-                  {completedAppointments.map((apt) => (
+                  {completedActivities.map((act) => (
                     <div
-                      key={apt.id}
+                      key={act.id}
                       className="flex items-center justify-between rounded-lg bg-success/5 border border-success/10 px-4 py-3 opacity-80"
                     >
                       <div className="flex items-center gap-3">
                         <div className="flex flex-col items-center text-sm font-medium text-success opacity-70">
                           <CheckCircle className="h-4 w-4" />
-                          <span>{apt.appointment_time.slice(0, 5)}</span>
+                          <span>{act.time}</span>
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <User className="h-3 w-3 text-muted-foreground" />
                             <p className="font-medium text-foreground line-through opacity-70">
-                              {apt.contact_name}
+                              {act.name}
                             </p>
                           </div>
-                          {apt.notes && (
-                            <p className="text-xs text-muted-foreground mt-1 line-through opacity-50">
-                              {apt.notes}
-                            </p>
-                          )}
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                            {act.type === "appointment" ? "Agendamento" : "Check-in Direto"}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] bg-success/20 text-success px-2 py-0.5 rounded-full font-bold uppercase">
                           OK
                         </span>
-                        <button
-                          onClick={() => deleteAppointment(apt.id)}
-                          title="Excluir"
-                          className="rounded p-1 text-muted-foreground hover:bg-muted/80 ml-2"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        {act.type === "appointment" && (
+                          <button
+                            onClick={() => deleteAppointment(act.id)}
+                            title="Excluir"
+                            className="rounded p-1 text-muted-foreground hover:bg-muted/80 ml-2"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -139,17 +139,15 @@ export function AgendaPanel() {
 
   // Dates that have appointments (for calendar highlighting)
   const datesWithAppointments = useMemo(() => {
-    const dates: Date[] = [];
-    appointments.forEach((a) => {
-      dates.push(parseISO(a.appointment_date));
-    });
-    return dates;
+    // Return an array of strings in YYYY-MM-DD format for easier comparison
+    return appointments.map((a) => a.appointment_date);
   }, [appointments]);
 
   // Appointments for the selected date
   const dayAppointments = useMemo(() => {
+    const selectedStr = format(selectedDate, "yyyy-MM-dd");
     return appointments
-      .filter((a) => isSameDay(parseISO(a.appointment_date), selectedDate))
+      .filter((a) => a.appointment_date === selectedStr)
       .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time));
   }, [appointments, selectedDate]);
 
@@ -267,16 +265,21 @@ export function AgendaPanel() {
 
       <div className="grid gap-6 lg:grid-cols-[auto_1fr]">
         {/* Calendar */}
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm h-fit">
           <Calendar
             mode="single"
             selected={selectedDate}
             onSelect={(d) => d && setSelectedDate(d)}
             locale={ptBR}
             className={cn("p-3 pointer-events-auto")}
-            modifiers={{ hasAppointment: datesWithAppointments }}
+            modifiers={{
+              hasAppointment: (date) => {
+                const dateStr = format(date, "yyyy-MM-dd");
+                return datesWithAppointments.includes(dateStr);
+              },
+            }}
             modifiersClassNames={{
-              hasAppointment: "bg-primary/20 font-bold text-primary",
+              hasAppointment: "relative after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:size-1 after:rounded-full after:bg-primary after:content-['']",
             }}
           />
         </div>

@@ -15,17 +15,37 @@ type TabType = "dashboard" | "agenda" | "cadastro" | "checkin" | "mapa" | "gamif
 export function VisitadoraDashboard() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
+  const [editingPrescriber, setEditingPrescriber] = useState<{
+    id?: string;
+    full_name: string;
+    street: string;
+    number: string;
+    neighborhood: string;
+    city: string;
+    zip_code: string;
+    specialty: string;
+    crm_crf: string;
+    clinic_name: string;
+    specialization: string;
+    partnership_potential: "baixo" | "medio" | "alto";
+    best_visit_day: string;
+    best_visit_time: string;
+    latitude: number | null;
+    longitude: number | null;
+  } | null>(null);
   const [prescriberCount, setPrescriberCount] = useState(0);
   const [pendingVisits, setPendingVisits] = useState(0);
   const [totalSales, setTotalSales] = useState(0);
-  const [prescribers, setPrescribers] = useState<Array<{
-    id: string;
-    full_name: string;
-    specialty: string | null;
-    partnership_potential: string | null;
-    latitude: number | null;
-    longitude: number | null;
-  }>>([]);
+  const [prescribers, setPrescribers] = useState<
+    Array<{
+      id: string;
+      full_name: string;
+      specialty: string | null;
+      partnership_potential: string | null;
+      latitude: number | null;
+      longitude: number | null;
+    }>
+  >([]);
 
   useEffect(() => {
     if (!user) return;
@@ -36,7 +56,10 @@ export function VisitadoraDashboard() {
     if (!user) return;
 
     const [prescRes, visitRes, salesRes] = await Promise.all([
-      supabase.from("prescribers").select("id, full_name, specialty, partnership_potential, latitude, longitude").eq("visitadora_id", user.id),
+      supabase
+        .from("prescribers")
+        .select("id, full_name, specialty, partnership_potential, latitude, longitude")
+        .eq("visitadora_id", user.id),
       supabase.from("visits").select("id").eq("visitadora_id", user.id).eq("status", "pendente"),
       supabase.from("sales").select("amount, prescriber_id").not("prescriber_id", "is", null),
     ]);
@@ -98,8 +121,18 @@ export function VisitadoraDashboard() {
       {activeTab === "dashboard" && (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            <StatCard title="Total de Prescritores" value={prescriberCount} icon={Users} description="Ativos na sua rede" />
-            <StatCard title="Visitas Aguardando" value={pendingVisits} icon={Calendar} trend={pendingVisits > 0 ? "up" : "neutral"} />
+            <StatCard
+              title="Total de Prescritores"
+              value={prescriberCount}
+              icon={Users}
+              description="Ativos na sua rede"
+            />
+            <StatCard
+              title="Visitas Aguardando"
+              value={pendingVisits}
+              icon={Calendar}
+              trend={pendingVisits > 0 ? "up" : "neutral"}
+            />
             <StatCard
               title="Receita Gerada"
               value={`R$ ${totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
@@ -112,8 +145,12 @@ export function VisitadoraDashboard() {
             <div className="group relative overflow-hidden rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h3 className="text-2xl font-light text-foreground">Agenda <span className="font-semibold">Diária</span></h3>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 mt-1">Ações pendentes para hoje</p>
+                  <h3 className="text-2xl font-light text-foreground">
+                    Agenda <span className="font-semibold">Diária</span>
+                  </h3>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/60 mt-1">
+                    Ações pendentes para hoje
+                  </p>
                 </div>
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <CalendarDays className="h-6 w-6" />
@@ -121,52 +158,126 @@ export function VisitadoraDashboard() {
               </div>
               <VisitsList userId={user?.id} />
             </div>
-            
+
             <div className="relative overflow-hidden rounded-[2.5rem] border border-white bg-secondary p-8 text-white shadow-2xl shadow-primary/20">
-               <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/20 blur-[80px]" />
-               <div className="relative">
-                  <h3 className="text-2xl font-light">Densidade <span className="font-semibold italic">da Rede</span></h3>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/40 mt-1">Estatística Geográfica</p>
-                  
-                  <div className="mt-8 flex flex-col gap-6">
-                    <div className="h-32 w-full rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center italic text-white/30 text-xs">
-                      Visualização otimizada para análise profissional
-                    </div>
-                    <button 
-                      onClick={() => setActiveTab('mapa')}
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-8 py-3 text-[11px] font-bold uppercase tracking-widest text-primary-foreground shadow-xl shadow-primary/20 transition-transform active:scale-95"
-                    >
-                      Abrir Atlas Global <MapPin className="h-4 w-4" />
-                    </button>
+              <div className="absolute top-0 right-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-primary/20 blur-[80px]" />
+              <div className="relative">
+                <h3 className="text-2xl font-light">
+                  Densidade <span className="font-semibold italic">da Rede</span>
+                </h3>
+                <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/40 mt-1">
+                  Estatística Geográfica
+                </p>
+
+                <div className="mt-8 flex flex-col gap-6">
+                  <div className="h-32 w-full rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center italic text-white/30 text-xs">
+                    Visualização otimizada para análise profissional
                   </div>
-               </div>
+                  <button
+                    onClick={() => setActiveTab("mapa")}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-8 py-3 text-[11px] font-bold uppercase tracking-widest text-primary-foreground shadow-xl shadow-primary/20 transition-transform active:scale-95"
+                  >
+                    Abrir Atlas Global <MapPin className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {activeTab === "cadastro" && (
-        <div className="max-w-2xl mx-auto animate-in fade-in zoom-in-95 duration-500">
-           <PrescriberForm onSuccess={loadData} />
+        <div className="max-w-4xl mx-auto animate-in fade-in zoom-in-95 duration-500 space-y-8">
+          <PrescriberForm
+            initialData={editingPrescriber}
+            onSuccess={() => {
+              loadData();
+              setEditingPrescriber(null);
+            }}
+            onCancel={() => setEditingPrescriber(null)}
+          />
+
+          {!editingPrescriber && (
+            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+              <h3 className="mb-4 text-lg font-semibold text-foreground">
+                Prescritores Cadastrados
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {prescribers.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex flex-col justify-between rounded-lg bg-muted/30 p-3 border border-border/50"
+                  >
+                    <div>
+                      <p className="font-bold text-sm text-foreground truncate">{p.full_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {p.specialty || "Sem especialidade"}
+                      </p>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between">
+                      <span
+                        className={`text-[10px] font-bold uppercase ${
+                          p.partnership_potential === "alto"
+                            ? "text-success"
+                            : p.partnership_potential === "medio"
+                              ? "text-warning"
+                              : "text-muted-foreground"
+                        }`}
+                      >
+                        Potencial {p.partnership_potential}
+                      </span>
+                      <button
+                        onClick={() => {
+                          setEditingPrescriber(p);
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="text-primary text-[10px] font-bold uppercase hover:underline"
+                      >
+                        Editar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {activeTab === "agenda" && <div className="animate-in fade-in duration-500"><AgendaPanel /></div>}
-      {activeTab === "checkin" && <div className="animate-in fade-in duration-500"><VisitCheckin /></div>}
-      {activeTab === "mapa" && <div className="animate-in fade-in duration-500"><PrescriberMap prescribers={prescribers} /></div>}
-      {activeTab === "gamificacao" && <div className="animate-in fade-in duration-500"><GamificationPanel /></div>}
+      {activeTab === "agenda" && (
+        <div className="animate-in fade-in duration-500">
+          <AgendaPanel />
+        </div>
+      )}
+      {activeTab === "checkin" && (
+        <div className="animate-in fade-in duration-500">
+          <VisitCheckin />
+        </div>
+      )}
+      {activeTab === "mapa" && (
+        <div className="animate-in fade-in duration-500">
+          <PrescriberMap prescribers={prescribers} />
+        </div>
+      )}
+      {activeTab === "gamificacao" && (
+        <div className="animate-in fade-in duration-500">
+          <GamificationPanel />
+        </div>
+      )}
     </div>
   );
 }
 
 function VisitsList({ userId }: { userId?: string }) {
-  const [visits, setVisits] = useState<Array<{
-    id: string;
-    visit_date: string;
-    notes: string | null;
-    status: string;
-    prescribers: { full_name: string } | null;
-  }>>([]);
+  const [visits, setVisits] = useState<
+    Array<{
+      id: string;
+      visit_date: string;
+      notes: string | null;
+      status: string;
+      prescribers: { full_name: string } | null;
+    }>
+  >([]);
 
   useEffect(() => {
     if (!userId) return;
@@ -190,9 +301,14 @@ function VisitsList({ userId }: { userId?: string }) {
   return (
     <div className="space-y-2">
       {visits.map((visit) => (
-        <div key={visit.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+        <div
+          key={visit.id}
+          className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3"
+        >
           <div>
-            <p className="font-medium text-foreground">{(visit.prescribers as { full_name: string } | null)?.full_name ?? "—"}</p>
+            <p className="font-medium text-foreground">
+              {(visit.prescribers as { full_name: string } | null)?.full_name ?? "—"}
+            </p>
             <p className="text-xs text-muted-foreground">{visit.visit_date}</p>
           </div>
           <span

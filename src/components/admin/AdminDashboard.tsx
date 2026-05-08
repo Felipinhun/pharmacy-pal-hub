@@ -13,17 +13,43 @@ import {
   updateAdminUserRole,
 } from "@/server/admin-users.client";
 
-type AdminTab = "overview" | "users" | "rankings" | "sales" | "goals" | "simulation";
+type AdminTab = "overview" | "users" | "rankings" | "sales" | "goals" | "visits" | "simulation";
 type SimulatedRole = "visitadora" | "prescritor" | "atendente";
 
 export function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [simulatedRole, setSimulatedRole] = useState<SimulatedRole>("visitadora");
-  const [stats, setStats] = useState({ totalUsers: 0, totalSales: 0, totalPrescribers: 0, totalVisits: 0 });
-  const [prescriberRanking, setPrescriberRanking] = useState<Array<{ position: number; name: string; value: string }>>([]);
-  const [atendenteRanking, setAtendenteRanking] = useState<Array<{ position: number; name: string; value: string }>>([]);
-  const [allSales, setAllSales] = useState<Array<{ id: string; amount: number; description: string | null; sale_date: string }>>([]);
-  const [users, setUsers] = useState<Array<{ id: string; full_name: string; email: string | null; role: string | null }>>([]);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalSales: 0,
+    totalPrescribers: 0,
+    totalVisits: 0,
+  });
+  const [prescriberRanking, setPrescriberRanking] = useState<
+    Array<{ position: number; name: string; value: string }>
+  >([]);
+  const [atendenteRanking, setAtendenteRanking] = useState<
+    Array<{ position: number; name: string; value: string }>
+  >([]);
+  const [allSales, setAllSales] = useState<
+    Array<{ id: string; amount: number; description: string | null; sale_date: string }>
+  >([]);
+  const [users, setUsers] = useState<
+    Array<{ id: string; full_name: string; email: string | null; role: string | null }>
+  >([]);
+  const [visits, setVisits] = useState<
+    Array<{
+      id: string;
+      visit_date: string;
+      checkin_at: string | null;
+      latitude: number | null;
+      longitude: number | null;
+      notes: string | null;
+      status: string;
+      prescribers: { full_name: string } | null;
+      profiles: { full_name: string } | null;
+    }>
+  >([]);
 
   useEffect(() => {
     loadData();
@@ -36,7 +62,10 @@ export function AdminDashboard() {
         supabase.from("profiles").select("id, full_name, email"),
         supabase.from("sales").select("*").order("sale_date", { ascending: false }),
         supabase.from("prescribers").select("id, full_name"),
-        supabase.from("visits").select("id"),
+        supabase
+          .from("visits")
+          .select("*, prescribers(full_name), profiles:visitadora_id(full_name)")
+          .order("created_at", { ascending: false }),
       ]);
 
       if (profilesRes.error || salesRes.error) {
@@ -56,14 +85,18 @@ export function AdminDashboard() {
 
       setAllSales(sales);
       setUsers(adminUsers);
+      setVisits(visitsRes.data || []);
 
       // Prescriber ranking by sales
       const prescriberTotals: Record<string, number> = {};
       const prescriberNames: Record<string, string> = {};
-      prescribers.forEach((p) => { prescriberNames[p.id] = p.full_name; });
+      prescribers.forEach((p) => {
+        prescriberNames[p.id] = p.full_name;
+      });
       sales.forEach((s) => {
         if (s.prescriber_id) {
-          prescriberTotals[s.prescriber_id] = (prescriberTotals[s.prescriber_id] || 0) + Number(s.amount);
+          prescriberTotals[s.prescriber_id] =
+            (prescriberTotals[s.prescriber_id] || 0) + Number(s.amount);
         }
       });
       const sortedPrescribers = Object.entries(prescriberTotals)
@@ -79,11 +112,14 @@ export function AdminDashboard() {
       const atendenteTotals: Record<string, number> = {};
       sales.forEach((s) => {
         if (s.atendente_id) {
-          atendenteTotals[s.atendente_id] = (atendenteTotals[s.atendente_id] || 0) + Number(s.amount);
+          atendenteTotals[s.atendente_id] =
+            (atendenteTotals[s.atendente_id] || 0) + Number(s.amount);
         }
       });
       const profileMap: Record<string, string> = {};
-      profiles.forEach((p) => { profileMap[p.id] = p.full_name; });
+      profiles.forEach((p) => {
+        profileMap[p.id] = p.full_name;
+      });
       const sortedAtendentes = Object.entries(atendenteTotals)
         .sort((a, b) => b[1] - a[1])
         .map(([id, total], i) => ({
@@ -103,6 +139,7 @@ export function AdminDashboard() {
     { key: "rankings", label: "Performance" },
     { key: "sales", label: "Vendas" },
     { key: "goals", label: "Metas" },
+    { key: "visits", label: "Relatórios de Visita" },
     { key: "simulation", label: "Simulação" },
   ];
 
@@ -143,64 +180,88 @@ export function AdminDashboard() {
               value={`R$ ${stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
               icon={DollarSign}
             />
-            <StatCard title="Prescritores Parceiros" value={stats.totalPrescribers} icon={ShieldCheck} />
+            <StatCard
+              title="Prescritores Parceiros"
+              value={stats.totalPrescribers}
+              icon={ShieldCheck}
+            />
             <StatCard title="Operações de Campo" value={stats.totalVisits} icon={TrendingUp} />
           </div>
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
-               <RankingTable title="Ranking de Prescritores" entries={prescriberRanking.slice(0, 5)} />
+              <RankingTable
+                title="Ranking de Prescritores"
+                entries={prescriberRanking.slice(0, 5)}
+              />
             </div>
             <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
-               <RankingTable title="Performance da Equipe" entries={atendenteRanking.slice(0, 5)} />
+              <RankingTable title="Performance da Equipe" entries={atendenteRanking.slice(0, 5)} />
             </div>
           </div>
         </div>
       )}
 
-      {activeTab === "users" && <div className="animate-in fade-in duration-500"><UsersManagement users={users} onRefresh={loadData} /></div>}
+      {activeTab === "users" && (
+        <div className="animate-in fade-in duration-500">
+          <UsersManagement users={users} onRefresh={loadData} />
+        </div>
+      )}
       {activeTab === "rankings" && (
         <div className="grid gap-6 lg:grid-cols-2 animate-in fade-in duration-500">
           <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
-             <RankingTable title="Hall da Fama de Prescritores" entries={prescriberRanking} />
+            <RankingTable title="Hall da Fama de Prescritores" entries={prescriberRanking} />
           </div>
           <div className="rounded-[2.5rem] border border-white bg-white/40 p-8 shadow-2xl shadow-primary/5 backdrop-blur-xl">
-             <RankingTable title="Quadro de Conquistas da Equipe" entries={atendenteRanking} />
+            <RankingTable title="Quadro de Conquistas da Equipe" entries={atendenteRanking} />
           </div>
         </div>
       )}
-      {activeTab === "sales" && <div className="animate-in fade-in duration-500"><SalesList sales={allSales} /></div>}
-      {activeTab === "goals" && <div className="animate-in fade-in duration-500"><GoalsManagement /></div>}
+      {activeTab === "sales" && (
+        <div className="animate-in fade-in duration-500">
+          <SalesList sales={allSales} />
+        </div>
+      )}
+      {activeTab === "goals" && (
+        <div className="animate-in fade-in duration-500">
+          <GoalsManagement />
+        </div>
+      )}
+      {activeTab === "visits" && (
+        <div className="animate-in fade-in duration-500">
+          <VisitsReport visits={visits} />
+        </div>
+      )}
       {activeTab === "simulation" && (
         <div className="space-y-6 animate-in fade-in duration-500">
           <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-2xl border border-primary/10">
-             <Eye className="h-5 w-5 text-primary" />
-             <p className="text-sm font-medium text-primary">Modo de Simulação Administrativa</p>
-             <div className="flex gap-2 ml-auto">
-                <button 
-                  onClick={() => setSimulatedRole("visitadora")}
-                  className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${simulatedRole === "visitadora" ? "bg-primary text-white" : "bg-white text-muted-foreground hover:bg-primary/10"}`}
-                >
-                  Visitadora
-                </button>
-                <button 
-                  onClick={() => setSimulatedRole("atendente")}
-                  className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${simulatedRole === "atendente" ? "bg-primary text-white" : "bg-white text-muted-foreground hover:bg-primary/10"}`}
-                >
-                  Atendente
-                </button>
-                <button 
-                  onClick={() => setSimulatedRole("prescritor")}
-                  className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${simulatedRole === "prescritor" ? "bg-primary text-white" : "bg-white text-muted-foreground hover:bg-primary/10"}`}
-                >
-                  Prescritor
-                </button>
-             </div>
+            <Eye className="h-5 w-5 text-primary" />
+            <p className="text-sm font-medium text-primary">Modo de Simulação Administrativa</p>
+            <div className="flex gap-2 ml-auto">
+              <button
+                onClick={() => setSimulatedRole("visitadora")}
+                className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${simulatedRole === "visitadora" ? "bg-primary text-white" : "bg-white text-muted-foreground hover:bg-primary/10"}`}
+              >
+                Visitadora
+              </button>
+              <button
+                onClick={() => setSimulatedRole("atendente")}
+                className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${simulatedRole === "atendente" ? "bg-primary text-white" : "bg-white text-muted-foreground hover:bg-primary/10"}`}
+              >
+                Atendente
+              </button>
+              <button
+                onClick={() => setSimulatedRole("prescritor")}
+                className={`px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase transition-all ${simulatedRole === "prescritor" ? "bg-primary text-white" : "bg-white text-muted-foreground hover:bg-primary/10"}`}
+              >
+                Prescritor
+              </button>
+            </div>
           </div>
-          
+
           <div className="border-t border-dashed border-primary/20 pt-10">
-             {simulatedRole === "visitadora" && <VisitadoraDashboard />}
-             {simulatedRole === "atendente" && <AtendenteDashboard />}
-             {simulatedRole === "prescritor" && <PrescritorDashboard />}
+            {simulatedRole === "visitadora" && <VisitadoraDashboard />}
+            {simulatedRole === "atendente" && <AtendenteDashboard />}
+            {simulatedRole === "prescritor" && <PrescritorDashboard />}
           </div>
         </div>
       )}
@@ -216,7 +277,12 @@ function UsersManagement({
   onRefresh: () => void;
 }) {
   const [changingRole, setChangingRole] = useState<string | null>(null);
-  const [newUser, setNewUser] = useState({ full_name: "", email: "", password: "", role: "atendente" });
+  const [newUser, setNewUser] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    role: "atendente",
+  });
   const [creating, setCreating] = useState(false);
 
   const handleCreateUser = async (e: React.FormEvent) => {
@@ -224,13 +290,14 @@ function UsersManagement({
     setCreating(true);
     try {
       await createAdminUser({ data: newUser });
-      
+
       alert(`Usuário ${newUser.full_name} criado com sucesso! A senha inicial já foi definida.`);
       setNewUser({ full_name: "", email: "", password: "", role: "atendente" });
       await onRefresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(`Falha na criação profissional: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Falha na criação profissional: ${message}`);
     } finally {
       setCreating(false);
     }
@@ -239,18 +306,26 @@ function UsersManagement({
   const handleRoleChange = async (userId: string, newRole: string) => {
     setChangingRole(userId);
     try {
-      await updateAdminUserRole({ data: { userId, role: newRole as "visitadora" | "prescritor" | "atendente" | "admin" } });
+      await updateAdminUserRole({
+        data: { userId, role: newRole as "visitadora" | "prescritor" | "atendente" | "admin" },
+      });
       await onRefresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(`Não foi possível alterar o cargo: ${err.message}`);
+      const message = err instanceof Error ? err.message : String(err);
+      alert(`Não foi possível alterar o cargo: ${message}`);
     } finally {
       setChangingRole(null);
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Deseja realmente excluir este usuário? Todos os dados vinculados podem ser afetados.")) return;
+    if (
+      !confirm(
+        "Deseja realmente excluir este usuário? Todos os dados vinculados podem ser afetados.",
+      )
+    )
+      return;
 
     await deleteAdminUser({ data: { userId } });
     await onRefresh();
@@ -268,20 +343,20 @@ function UsersManagement({
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h3 className="mb-4 text-lg font-semibold text-foreground">Novo Usuário / Convite</h3>
         <form onSubmit={handleCreateUser} className="grid gap-4 sm:grid-cols-4">
-          <input 
-            className="rounded-lg border border-input bg-background px-4 py-2 text-sm" 
-            placeholder="Nome Completo" 
+          <input
+            className="rounded-lg border border-input bg-background px-4 py-2 text-sm"
+            placeholder="Nome Completo"
             value={newUser.full_name}
-            onChange={(e) => setNewUser({...newUser, full_name: e.target.value})}
-            required 
+            onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
+            required
           />
-          <input 
-            className="rounded-lg border border-input bg-background px-4 py-2 text-sm" 
-            placeholder="Email" 
+          <input
+            className="rounded-lg border border-input bg-background px-4 py-2 text-sm"
+            placeholder="Email"
             type="email"
             value={newUser.email}
-            onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-            required 
+            onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+            required
           />
           <input
             className="rounded-lg border border-input bg-background px-4 py-2 text-sm"
@@ -289,19 +364,23 @@ function UsersManagement({
             type="password"
             minLength={6}
             value={newUser.password}
-            onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+            onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
             required
           />
           <div className="flex gap-2">
-            <select 
+            <select
               className="flex-1 rounded-lg border border-input bg-background px-4 py-2 text-sm"
               value={newUser.role}
-              onChange={(e) => setNewUser({...newUser, role: e.target.value})}
+              onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
             >
-              {Object.entries(roleLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {Object.entries(roleLabels).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
             </select>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={creating}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
@@ -315,7 +394,10 @@ function UsersManagement({
         <h3 className="mb-4 text-lg font-semibold text-foreground">Usuários Cadastrados</h3>
         <div className="space-y-2">
           {users.map((u) => (
-            <div key={u.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+            <div
+              key={u.id}
+              className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3"
+            >
               <div>
                 <p className="font-medium text-foreground">{u.full_name || u.email}</p>
                 <p className="text-xs text-muted-foreground">{u.email}</p>
@@ -329,10 +411,12 @@ function UsersManagement({
                 >
                   <option value="">Sem papel</option>
                   {Object.entries(roleLabels).map(([key, label]) => (
-                    <option key={key} value={key}>{label}</option>
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
                   ))}
                 </select>
-                <button 
+                <button
                   onClick={() => handleDeleteUser(u.id)}
                   className="rounded-lg p-2 text-destructive hover:bg-destructive/10 transition-colors"
                   title="Excluir Usuário"
@@ -348,7 +432,11 @@ function UsersManagement({
   );
 }
 
-function SalesList({ sales }: { sales: Array<{ id: string; amount: number; description: string | null; sale_date: string }> }) {
+function SalesList({
+  sales,
+}: {
+  sales: Array<{ id: string; amount: number; description: string | null; sale_date: string }>;
+}) {
   return (
     <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
       <h3 className="mb-4 text-lg font-semibold text-foreground">Todas as Vendas</h3>
@@ -357,7 +445,10 @@ function SalesList({ sales }: { sales: Array<{ id: string; amount: number; descr
       ) : (
         <div className="space-y-2">
           {sales.map((sale) => (
-            <div key={sale.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+            <div
+              key={sale.id}
+              className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3"
+            >
               <div>
                 <p className="font-medium text-foreground">{sale.description ?? "Venda"}</p>
                 <p className="text-xs text-muted-foreground">{sale.sale_date}</p>
@@ -374,10 +465,29 @@ function SalesList({ sales }: { sales: Array<{ id: string; amount: number; descr
 }
 
 function GoalsManagement() {
-  const [goals, setGoals] = useState<Array<{ id: string; title: string; target_value: number; goal_type: string; target_role: string; is_active: boolean }>>([]);
-  const [form, setForm] = useState({ title: "", target_value: "", goal_type: "sales_amount", target_role: "atendente" });
+  const [goals, setGoals] = useState<
+    Array<{
+      id: string;
+      title: string;
+      target_value: number;
+      goal_type: string;
+      target_role: string;
+      is_active: boolean;
+    }>
+  >([]);
+  const [form, setForm] = useState({
+    title: "",
+    target_value: "",
+    goal_type: "sales_amount",
+    target_role: "atendente",
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ title: "", target_value: "", goal_type: "", target_role: "" });
+  const [editForm, setEditForm] = useState({
+    title: "",
+    target_value: "",
+    goal_type: "",
+    target_role: "",
+  });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -385,7 +495,10 @@ function GoalsManagement() {
   }, []);
 
   const loadGoals = async () => {
-    const { data } = await supabase.from("goals").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase
+      .from("goals")
+      .select("*")
+      .order("created_at", { ascending: false });
     if (data) setGoals(data);
   };
 
@@ -413,23 +526,38 @@ function GoalsManagement() {
     loadGoals();
   };
 
-  const startEdit = (g: { id: string; title: string; target_value: number; goal_type: string; target_role: string }) => {
+  const startEdit = (g: {
+    id: string;
+    title: string;
+    target_value: number;
+    goal_type: string;
+    target_role: string;
+  }) => {
     setEditingId(g.id);
-    setEditForm({ title: g.title, target_value: String(g.target_value), goal_type: g.goal_type, target_role: g.target_role });
+    setEditForm({
+      title: g.title,
+      target_value: String(g.target_value),
+      goal_type: g.goal_type,
+      target_role: g.target_role,
+    });
   };
 
   const handleSaveEdit = async (id: string) => {
-    await supabase.from("goals").update({
-      title: editForm.title,
-      target_value: parseFloat(editForm.target_value),
-      goal_type: editForm.goal_type,
-      target_role: editForm.target_role as "visitadora" | "prescritor" | "atendente" | "admin",
-    }).eq("id", id);
+    await supabase
+      .from("goals")
+      .update({
+        title: editForm.title,
+        target_value: parseFloat(editForm.target_value),
+        goal_type: editForm.goal_type,
+        target_role: editForm.target_role as "visitadora" | "prescritor" | "atendente" | "admin",
+      })
+      .eq("id", id);
     setEditingId(null);
     loadGoals();
   };
 
-  const inputClass = "w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring";
+  const inputClass =
+    "w-full rounded-lg border border-input bg-background px-4 py-2.5 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring";
 
   const goalTypeLabels: Record<string, string> = {
     sales_amount: "Valor de Vendas",
@@ -450,28 +578,55 @@ function GoalsManagement() {
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
         <h3 className="mb-4 text-lg font-semibold text-foreground">Nova Meta / Competição</h3>
         <form onSubmit={handleCreate} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <input className={inputClass} placeholder="Título da meta" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-          <input className={inputClass} type="number" placeholder="Valor alvo" value={form.target_value} onChange={(e) => setForm({ ...form, target_value: e.target.value })} required />
-          <select className={inputClass} value={form.goal_type} onChange={(e) => setForm({ ...form, goal_type: e.target.value })}>
+          <input
+            className={inputClass}
+            placeholder="Título da meta"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            required
+          />
+          <input
+            className={inputClass}
+            type="number"
+            placeholder="Valor alvo"
+            value={form.target_value}
+            onChange={(e) => setForm({ ...form, target_value: e.target.value })}
+            required
+          />
+          <select
+            className={inputClass}
+            value={form.goal_type}
+            onChange={(e) => setForm({ ...form, goal_type: e.target.value })}
+          >
             <option value="sales_amount">Valor de Vendas</option>
             <option value="sales_count">Nº de Vendas</option>
             <option value="ticket_medio">Ticket Médio</option>
             <option value="prescriber_count">Nº de Prescritores</option>
             <option value="visit_count">Nº de Visitas</option>
           </select>
-          <select className={inputClass} value={form.target_role} onChange={(e) => setForm({ ...form, target_role: e.target.value })}>
+          <select
+            className={inputClass}
+            value={form.target_role}
+            onChange={(e) => setForm({ ...form, target_role: e.target.value })}
+          >
             <option value="atendente">Atendente</option>
             <option value="visitadora">Visitadora</option>
             <option value="prescritor">Prescritor</option>
           </select>
-          <button type="submit" disabled={submitting} className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          >
             {submitting ? "Criando..." : "Criar Meta"}
           </button>
         </form>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-        <h3 className="mb-4 text-lg font-semibold text-foreground">Metas & Gamificações Existentes</h3>
+        <h3 className="mb-4 text-lg font-semibold text-foreground">
+          Metas & Gamificações Existentes
+        </h3>
         {goals.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma meta criada.</p>
         ) : (
@@ -480,25 +635,66 @@ function GoalsManagement() {
               editingId === g.id ? (
                 <div key={g.id} className="rounded-lg border border-primary/30 bg-primary/5 p-4">
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <input className={inputClass} value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} />
-                    <input className={inputClass} type="number" value={editForm.target_value} onChange={(e) => setEditForm({ ...editForm, target_value: e.target.value })} />
-                    <select className={inputClass} value={editForm.goal_type} onChange={(e) => setEditForm({ ...editForm, goal_type: e.target.value })}>
-                      {Object.entries(goalTypeLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    <input
+                      className={inputClass}
+                      value={editForm.title}
+                      onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                    />
+                    <input
+                      className={inputClass}
+                      type="number"
+                      value={editForm.target_value}
+                      onChange={(e) => setEditForm({ ...editForm, target_value: e.target.value })}
+                    />
+                    <select
+                      className={inputClass}
+                      value={editForm.goal_type}
+                      onChange={(e) => setEditForm({ ...editForm, goal_type: e.target.value })}
+                    >
+                      {Object.entries(goalTypeLabels).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
                     </select>
-                    <select className={inputClass} value={editForm.target_role} onChange={(e) => setEditForm({ ...editForm, target_role: e.target.value })}>
-                      {Object.entries(roleLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    <select
+                      className={inputClass}
+                      value={editForm.target_role}
+                      onChange={(e) => setEditForm({ ...editForm, target_role: e.target.value })}
+                    >
+                      {Object.entries(roleLabels).map(([k, v]) => (
+                        <option key={k} value={k}>
+                          {v}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <button onClick={() => handleSaveEdit(g.id)} className="rounded-lg bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90">Salvar</button>
-                    <button onClick={() => setEditingId(null)} className="rounded-lg bg-muted px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:bg-muted/80">Cancelar</button>
+                    <button
+                      onClick={() => handleSaveEdit(g.id)}
+                      className="rounded-lg bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                    >
+                      Salvar
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="rounded-lg bg-muted px-4 py-1.5 text-sm font-semibold text-muted-foreground hover:bg-muted/80"
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 </div>
               ) : (
-                <div key={g.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+                <div
+                  key={g.id}
+                  className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3"
+                >
                   <div>
                     <p className="font-medium text-foreground">{g.title}</p>
-                    <p className="text-xs text-muted-foreground">{roleLabels[g.target_role] ?? g.target_role} · {goalTypeLabels[g.goal_type] ?? g.goal_type}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {roleLabels[g.target_role] ?? g.target_role} ·{" "}
+                      {goalTypeLabels[g.goal_type] ?? g.goal_type}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-foreground">
@@ -512,15 +708,89 @@ function GoalsManagement() {
                     >
                       {g.is_active ? "Ativa" : "Inativa"}
                     </button>
-                    <button onClick={() => startEdit(g)} className="rounded-lg bg-muted px-2 py-1 text-xs text-foreground hover:bg-muted/80">✏️</button>
-                    <button onClick={() => handleDelete(g.id)} className="rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive hover:bg-destructive/20">🗑️</button>
+                    <button
+                      onClick={() => startEdit(g)}
+                      className="rounded-lg bg-muted px-2 py-1 text-xs text-foreground hover:bg-muted/80"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => handleDelete(g.id)}
+                      className="rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive hover:bg-destructive/20"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </div>
-              )
+              ),
             )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function VisitsReport({
+  visits,
+}: {
+  visits: Array<{
+    id: string;
+    visit_date: string;
+    checkin_at: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    notes: string | null;
+    status: string;
+    prescribers: { full_name: string } | null;
+    profiles: { full_name: string } | null;
+  }>;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <h3 className="mb-4 text-lg font-semibold text-foreground">Relatórios de Visitas de Campo</h3>
+      {visits.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nenhuma visita registrada ainda.</p>
+      ) : (
+        <div className="space-y-4">
+          {visits.map((visit) => (
+            <div key={visit.id} className="rounded-lg bg-muted/30 p-4 border border-border/50">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-3 gap-2">
+                <div>
+                  <p className="font-bold text-foreground">
+                    {visit.prescribers?.full_name || "Prescritor Desconhecido"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Visitadora:{" "}
+                    <span className="font-medium text-primary">
+                      {visit.profiles?.full_name || "Desconhecida"}
+                    </span>
+                  </p>
+                </div>
+                <div className="flex flex-col items-end text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
+                  <span>📅 {visit.visit_date}</span>
+                  {visit.checkin_at && (
+                    <span>🕒 {new Date(visit.checkin_at).toLocaleTimeString("pt-BR")}</span>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg bg-white p-3 border border-black/5">
+                <p className="text-xs font-bold text-muted-foreground uppercase mb-1">
+                  Observações:
+                </p>
+                <p className="text-sm text-foreground/80 italic">
+                  {visit.notes ? `"${visit.notes}"` : "Sem observações registradas."}
+                </p>
+              </div>
+              {visit.latitude && visit.longitude && (
+                <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground uppercase font-bold">
+                  📍 Local de Check-in: {visit.latitude.toFixed(4)}, {visit.longitude.toFixed(4)}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

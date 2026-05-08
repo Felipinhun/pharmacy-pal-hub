@@ -31,6 +31,8 @@ export function VisitCheckin() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
+  const [editingNotes, setEditingNotes] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -59,7 +61,7 @@ export function VisitCheckin() {
         visitsRes.data.map((v) => ({
           ...v,
           prescriber_name: nameMap.get(v.prescriber_id) ?? "—",
-        }))
+        })),
       );
     }
   };
@@ -79,7 +81,7 @@ export function VisitCheckin() {
         alert("Não foi possível obter sua localização. Verifique as permissões.");
         setGeoLoading(false);
       },
-      { enableHighAccuracy: true, timeout: 15000 }
+      { enableHighAccuracy: true, timeout: 15000 },
     );
   };
 
@@ -112,6 +114,43 @@ export function VisitCheckin() {
       setLocation(null);
       loadData();
       setTimeout(() => setSuccess(false), 4000);
+    }
+    setSubmitting(false);
+  };
+
+  const handleUpdateNotes = async (visitId: string) => {
+    setSubmitting(true);
+    const { error } = await supabase
+      .from("visits")
+      .update({ notes: editingNotes })
+      .eq("id", visitId);
+
+    if (!error) {
+      setEditingVisitId(null);
+      loadData();
+    }
+    setSubmitting(false);
+  };
+
+  const handleCompleteVisit = async (visit: Visit) => {
+    if (!location) {
+      alert("Você precisa capturar sua localização primeiro.");
+      return;
+    }
+    setSubmitting(true);
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from("visits")
+      .update({
+        status: "concluida",
+        latitude: location.lat,
+        longitude: location.lng,
+        checkin_at: now,
+      })
+      .eq("id", visit.id);
+
+    if (!error) {
+      loadData();
     }
     setSubmitting(false);
   };
@@ -160,7 +199,11 @@ export function VisitCheckin() {
                 disabled={geoLoading}
                 className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/20 disabled:opacity-50"
               >
-                {geoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
+                {geoLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MapPin className="h-4 w-4" />
+                )}
                 {geoLoading ? "Obtendo localização..." : "Capturar Localização"}
               </button>
               {location && (
@@ -170,7 +213,8 @@ export function VisitCheckin() {
               )}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              Você deve estar no local da visita. O GPS, data e hora serão registrados automaticamente.
+              Você deve estar no local da visita. O GPS, data e hora serão registrados
+              automaticamente.
             </p>
           </div>
 
@@ -200,36 +244,92 @@ export function VisitCheckin() {
         {recentVisits.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhum check-in registrado ainda.</p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-4">
             {recentVisits.map((v) => (
-              <div key={v.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-foreground">{v.prescriber_name}</p>
-                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {v.checkin_at
-                        ? new Date(v.checkin_at).toLocaleString("pt-BR")
-                        : v.visit_date}
-                    </span>
-                    {v.latitude && v.longitude && (
+              <div key={v.id} className="rounded-lg border border-border/50 bg-muted/30 px-4 py-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-foreground">{v.prescriber_name}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] uppercase font-bold tracking-wider text-muted-foreground/70">
                       <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
-                        {v.latitude.toFixed(4)}, {v.longitude.toFixed(4)}
+                        <Clock className="h-3 w-3" />
+                        {v.checkin_at
+                          ? new Date(v.checkin_at).toLocaleString("pt-BR")
+                          : v.visit_date}
                       </span>
+                      {v.latitude && v.longitude && (
+                        <span className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {v.latitude.toFixed(4)}, {v.longitude.toFixed(4)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
+                        v.status === "concluida"
+                          ? "bg-success/10 text-success"
+                          : "bg-warning/10 text-warning"
+                      }`}
+                    >
+                      {v.status === "concluida" ? "Concluída" : "Pendente"}
+                    </span>
+                    {v.status === "pendente" && (
+                      <button
+                        onClick={() => handleCompleteVisit(v)}
+                        disabled={submitting || !location}
+                        className="text-[10px] font-bold uppercase tracking-wider bg-primary text-primary-foreground px-2 py-1 rounded hover:bg-primary/90 disabled:opacity-50"
+                        title={!location ? "Capture a localização primeiro" : "Concluir visita"}
+                      >
+                        {submitting ? "..." : "Fazer Check-in"}
+                      </button>
+                    )}
+                    {editingVisitId !== v.id && (
+                      <button
+                        onClick={() => {
+                          setEditingVisitId(v.id);
+                          setEditingNotes(v.notes || "");
+                        }}
+                        className="text-[10px] font-bold uppercase tracking-wider text-primary hover:underline"
+                      >
+                        Editar Nota
+                      </button>
                     )}
                   </div>
-                  {v.notes && <p className="mt-1 text-xs text-muted-foreground truncate">{v.notes}</p>}
                 </div>
-                <span
-                  className={`ml-2 shrink-0 rounded-full px-3 py-1 text-xs font-medium ${
-                    v.status === "concluida"
-                      ? "bg-success/10 text-success"
-                      : "bg-warning/10 text-warning"
-                  }`}
-                >
-                  {v.status === "concluida" ? "Concluída" : "Pendente"}
-                </span>
+
+                {editingVisitId === v.id ? (
+                  <div className="mt-3 space-y-3">
+                    <textarea
+                      className={`${inputClass} min-h-[80px] text-xs bg-white`}
+                      value={editingNotes}
+                      onChange={(e) => setEditingNotes(e.target.value)}
+                      placeholder="Editar observações..."
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleUpdateNotes(v.id)}
+                        disabled={submitting}
+                        className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        onClick={() => setEditingVisitId(null)}
+                        className="rounded-lg bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  v.notes && (
+                    <div className="mt-2 rounded-lg bg-white/50 p-3 italic text-sm text-foreground/80 border border-black/5">
+                      "{v.notes}"
+                    </div>
+                  )
+                )}
               </div>
             ))}
           </div>

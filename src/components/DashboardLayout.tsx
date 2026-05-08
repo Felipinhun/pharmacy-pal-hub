@@ -46,9 +46,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="fixed top-0 left-0 right-0 z-50 flex h-16 items-center justify-between border-b border-white/10 bg-secondary/95 backdrop-blur-md px-6 md:hidden">
         <div className="flex items-center gap-2.5">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white p-1">
-            <img 
-              src="https://s3.bioaurea.cloud/logoeimagens/IMG_6940.PNG" 
-              alt="Logo Bio Aurea" 
+            <img
+              src="https://s3.bioaurea.cloud/logoeimagens/IMG_6940.PNG"
+              alt="Logo Bio Aurea"
               className="h-full w-full object-contain"
             />
           </div>
@@ -71,15 +71,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <div className="h-full flex flex-col">
           <div className="flex h-28 items-center gap-3 px-8">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white p-1.5 shadow-xl transition-all hover:scale-105">
-              <img 
-                src="https://s3.bioaurea.cloud/logoeimagens/IMG_6940.PNG" 
-                alt="Logo Bio Aurea" 
+              <img
+                src="https://s3.bioaurea.cloud/logoeimagens/IMG_6940.PNG"
+                alt="Logo Bio Aurea"
                 className="h-full w-full object-contain"
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-2xl font-black tracking-tighter text-white leading-none">Bio Aurea</span>
-              <span className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-primary-foreground/70">Central Lab</span>
+              <span className="text-2xl font-black tracking-tighter text-white leading-none">
+                Bio Aurea
+              </span>
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-primary-foreground/70">
+                Central Lab
+              </span>
             </div>
           </div>
 
@@ -90,8 +94,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <RoleIcon className="h-6 w-6 brightness-125" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white tracking-wide uppercase">{config?.label}</p>
-                  <p className="text-[10px] font-medium text-white/50 truncate mt-0.5">{user?.email}</p>
+                  <p className="text-sm font-bold text-white tracking-wide uppercase">
+                    {config?.label}
+                  </p>
+                  <p className="text-[10px] font-medium text-white/50 truncate mt-0.5">
+                    {user?.email}
+                  </p>
                 </div>
               </div>
             </div>
@@ -99,9 +107,19 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <nav className="space-y-2">
               {role && (
                 <Link
-                  to={`/${role}` as "/visitadora"}
+                  to={
+                    role === "visitadora"
+                      ? "/visitadora"
+                      : role === "admin"
+                        ? "/admin"
+                        : role === "atendente"
+                          ? "/atendente"
+                          : "/prescritor"
+                  }
                   className="group flex items-center gap-4 rounded-[1.25rem] px-5 py-3.5 text-sm font-bold text-white transition-all hover:bg-white/10 active:scale-[0.97]"
-                  activeProps={{ className: "!bg-primary !text-primary-foreground shadow-2xl shadow-primary/30" }}
+                  activeProps={{
+                    className: "!bg-primary !text-primary-foreground shadow-2xl shadow-primary/30",
+                  }}
                   onClick={() => setMobileOpen(false)}
                 >
                   <BarChart3 className="h-5 w-5" />

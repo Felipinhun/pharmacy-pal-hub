@@ -6,10 +6,17 @@ import { DollarSign, TrendingUp, Hash, Target } from "lucide-react";
 
 export function PrescritorDashboard() {
   const { user } = useAuth();
-  const [sales, setSales] = useState<Array<{ id: string; amount: number; description: string | null; sale_date: string }>>([]);
+  const [sales, setSales] = useState<
+    Array<{ id: string; amount: number; description: string | null; sale_date: string }>
+  >([]);
   const [totalSales, setTotalSales] = useState(0);
   const [ranking, setRanking] = useState<number | null>(null);
-  const [goals, setGoals] = useState<Array<{ id: string; title: string; target_value: number; goal_type: string }>>([]);
+  const [goals, setGoals] = useState<
+    Array<{ id: string; title: string; target_value: number; goal_type: string }>
+  >([]);
+  const [visits, setVisits] = useState<
+    Array<{ id: string; visit_date: string; notes: string | null; checkin_at: string | null }>
+  >([]);
 
   useEffect(() => {
     if (!user) return;
@@ -29,10 +36,20 @@ export function PrescritorDashboard() {
 
     if (!prescriber) return;
 
-    const [salesRes, allSalesRes, goalsRes] = await Promise.all([
-      supabase.from("sales").select("id, amount, description, sale_date").eq("prescriber_id", prescriber.id).order("sale_date", { ascending: false }),
+    const [salesRes, allSalesRes, goalsRes, visitsRes] = await Promise.all([
+      supabase
+        .from("sales")
+        .select("id, amount, description, sale_date")
+        .eq("prescriber_id", prescriber.id)
+        .order("sale_date", { ascending: false }),
       supabase.from("sales").select("prescriber_id, amount"),
       supabase.from("goals").select("*").eq("target_role", "prescritor").eq("is_active", true),
+      supabase
+        .from("visits")
+        .select("id, visit_date, notes, checkin_at")
+        .eq("prescriber_id", prescriber.id)
+        .eq("status", "concluida")
+        .order("visit_date", { ascending: false }),
     ]);
 
     if (salesRes.data) {
@@ -55,6 +72,7 @@ export function PrescritorDashboard() {
     }
 
     if (goalsRes.data) setGoals(goalsRes.data);
+    if (visitsRes.data) setVisits(visitsRes.data);
   };
 
   const ticketMedio = sales.length > 0 ? totalSales / sales.length : 0;
@@ -89,13 +107,22 @@ export function PrescritorDashboard() {
         ) : (
           <div className="space-y-3">
             {goals.map((goal) => {
-              const current = goal.goal_type === "sales_amount" ? totalSales : goal.goal_type === "sales_count" ? sales.length : goal.goal_type === "ticket_medio" ? ticketMedio : 0;
+              const current =
+                goal.goal_type === "sales_amount"
+                  ? totalSales
+                  : goal.goal_type === "sales_count"
+                    ? sales.length
+                    : goal.goal_type === "ticket_medio"
+                      ? ticketMedio
+                      : 0;
               const progress = Math.min((current / Number(goal.target_value)) * 100, 100);
               return (
                 <div key={goal.id} className="rounded-lg bg-muted/50 p-4">
                   <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Target className={`h-5 w-5 ${progress >= 100 ? "text-success" : "text-primary"}`} />
+                      <Target
+                        className={`h-5 w-5 ${progress >= 100 ? "text-success" : "text-primary"}`}
+                      />
                       <span className="text-sm font-medium text-foreground">{goal.title}</span>
                     </div>
                     <span className="text-xs text-muted-foreground">
@@ -103,11 +130,51 @@ export function PrescritorDashboard() {
                     </span>
                   </div>
                   <div className="h-2 rounded-full bg-muted">
-                    <div className={`h-2 rounded-full transition-all ${progress >= 100 ? "bg-success" : "bg-primary"}`} style={{ width: `${progress}%` }} />
+                    <div
+                      className={`h-2 rounded-full transition-all ${progress >= 100 ? "bg-success" : "bg-primary"}`}
+                      style={{ width: `${progress}%` }}
+                    />
                   </div>
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+        <h3 className="mb-4 text-lg font-semibold text-foreground">Acompanhamento de Visitas</h3>
+        {visits.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhuma visita registrada ainda.</p>
+        ) : (
+          <div className="space-y-3">
+            {visits.map((visit) => (
+              <div key={visit.id} className="rounded-lg bg-muted/30 p-4 border border-border/50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    📅 {visit.visit_date}
+                  </span>
+                  {visit.checkin_at && (
+                    <span className="text-[10px] text-muted-foreground">
+                      Check-in:{" "}
+                      {new Date(visit.checkin_at).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  )}
+                </div>
+                {visit.notes ? (
+                  <p className="text-sm text-foreground/80 italic bg-white/50 p-2 rounded border border-black/5">
+                    "{visit.notes}"
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">
+                    Nenhuma observação deixada.
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -119,7 +186,10 @@ export function PrescritorDashboard() {
         ) : (
           <div className="space-y-2">
             {sales.map((sale) => (
-              <div key={sale.id} className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+              <div
+                key={sale.id}
+                className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3"
+              >
                 <div>
                   <p className="font-medium text-foreground">{sale.description ?? "Venda"}</p>
                   <p className="text-xs text-muted-foreground">{sale.sale_date}</p>

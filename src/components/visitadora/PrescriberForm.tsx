@@ -28,7 +28,6 @@ export function PrescriberForm({ onSuccess }: PrescriberFormProps) {
     partnership_potential: "medio" as "baixo" | "medio" | "alto",
     best_visit_day: "",
     best_visit_time: "",
-    notes: "",
   });
 
   const captureLocation = () => {
@@ -81,27 +80,6 @@ export function PrescriberForm({ onSuccess }: PrescriberFormProps) {
     });
 
     if (!error) {
-      // Also create a visit entry if notes exist
-      if (form.notes) {
-        // Get the just-created prescriber
-        const { data: newPrescriber } = await supabase
-          .from("prescribers")
-          .select("id")
-          .eq("visitadora_id", user.id)
-          .eq("full_name", form.full_name)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single();
-
-        if (newPrescriber) {
-          await supabase.from("visits").insert({
-            visitadora_id: user.id,
-            prescriber_id: newPrescriber.id,
-            notes: form.notes,
-          });
-        }
-      }
-
       setSuccess(true);
       setForm({
         full_name: "",
@@ -117,7 +95,6 @@ export function PrescriberForm({ onSuccess }: PrescriberFormProps) {
         partnership_potential: "medio",
         best_visit_day: "",
         best_visit_time: "",
-        notes: "",
       });
       onSuccess?.();
     }
@@ -240,15 +217,6 @@ export function PrescriberForm({ onSuccess }: PrescriberFormProps) {
               )}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">Esteja no local do prescritor para capturar a localização correta.</p>
-          </div>
-          <div className="mt-4">
-            <label className={labelClass}>Como foi a visita</label>
-            <textarea
-              className={`${inputClass} min-h-[100px] resize-y`}
-              value={form.notes}
-              onChange={(e) => updateField("notes", e.target.value)}
-              placeholder="Descreva como foi a visita..."
-            />
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { StatCard } from "@/components/StatCard";
@@ -169,11 +170,13 @@ function VisitsList({ userId }: { userId?: string }) {
 
   useEffect(() => {
     if (!userId) return;
+    const today = format(new Date(), "yyyy-MM-dd");
     supabase
       .from("visits")
       .select("id, visit_date, notes, status, prescribers(full_name)")
       .eq("visitadora_id", userId)
-      .order("visit_date", { ascending: true })
+      .eq("visit_date", today)
+      .order("created_at", { ascending: true })
       .limit(10)
       .then(({ data }) => {
         if (data) setVisits(data as typeof visits);

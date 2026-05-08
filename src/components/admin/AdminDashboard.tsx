@@ -105,7 +105,7 @@ export function AdminDashboard() {
     try {
       const [adminUsers, profilesRes, salesRes, prescribersRes, visitsRes] = await Promise.all([
         listAdminUsers(),
-        supabase.from("profiles").select("id, full_name, email, role"),
+        supabase.from("profiles").select("id, full_name, email"),
         supabase.from("sales").select("*").order("sale_date", { ascending: false }),
         supabase.from("prescribers").select("*"),
         supabase
@@ -818,7 +818,7 @@ function UsersManagement({
       await onRefresh();
     } catch (err: unknown) {
       console.error(err);
-      const message = err instanceof Error ? err.message : String(err);
+      const message = (err as any)?.message || (err as any)?.error_description || String(err);
       alert(`Falha na criação profissional: ${message}`);
     } finally {
       setCreating(false);
@@ -834,7 +834,7 @@ function UsersManagement({
       await onRefresh();
     } catch (err: unknown) {
       console.error(err);
-      const message = err instanceof Error ? err.message : String(err);
+      const message = (err as any)?.message || (err as any)?.error_description || String(err);
       alert(`Não foi possível alterar o cargo: ${message}`);
     } finally {
       setChangingRole(null);
@@ -854,8 +854,8 @@ function UsersManagement({
   };
 
   const roleLabels: Record<string, string> = {
-    visitadora: "Visitadora",
-    prescritor: "Prescritor",
+    visitadora: "Visitador(a)",
+    prescritor: "Prescritor(a)",
     atendente: "Atendente",
     admin: "Admin",
   };
@@ -1090,8 +1090,8 @@ function GoalsManagement() {
   };
 
   const roleLabels: Record<string, string> = {
-    visitadora: "Visitadora",
-    prescritor: "Prescritor",
+    visitadora: "Visitador(a)",
+    prescritor: "Prescritor(a)",
     atendente: "Atendente",
   };
 

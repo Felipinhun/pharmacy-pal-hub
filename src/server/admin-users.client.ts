@@ -12,18 +12,31 @@ type AdminUser = {
 };
 
 export async function listAdminUsers() {
+  console.log("Iniciando listagem de usuários admin...");
   const [profilesRes, rolesRes] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, email").order("full_name", { ascending: true }),
+    supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .order("full_name", { ascending: true }),
     supabase.from("user_roles").select("user_id, role"),
   ]);
 
-  if (profilesRes.error) throw profilesRes.error;
-  if (rolesRes.error) throw rolesRes.error;
+  if (profilesRes.error) {
+    console.error("Erro ao buscar perfis:", profilesRes.error);
+    throw profilesRes.error;
+  }
+  if (rolesRes.error) {
+    console.error("Erro ao buscar papéis:", rolesRes.error);
+    throw rolesRes.error;
+  }
+
+  console.log(`Perfis encontrados: ${profilesRes.data?.length}`);
+  console.log(`Papéis encontrados: ${rolesRes.data?.length}`);
 
   const roleMap = new Map<string, (typeof APP_ROLES)[number]>();
   rolesRes.data?.forEach((roleRow) => {
     if (roleRow.user_id && roleRow.role) {
-      roleMap.set(roleRow.user_id, roleRow.role);
+      roleMap.set(roleRow.user_id, roleRow.role as any);
     }
   });
 
@@ -35,11 +48,20 @@ export async function listAdminUsers() {
   })) as AdminUser[];
 }
 
-export async function createAdminUser({ data }: { data: { full_name: string; email: string; password: string; role: (typeof APP_ROLES)[number] } }) {
+export async function createAdminUser({
+  data,
+}: {
+  data: { full_name: string; email: string; password: string; role: (typeof APP_ROLES)[number] };
+}) {
   const parsed = z
     .object({
       full_name: z.string().trim().min(2, "Informe o nome completo.").max(120),
-      email: z.string().trim().email("Informe um email válido.").max(255).transform((email) => email.toLowerCase()),
+      email: z
+        .string()
+        .trim()
+        .email("Informe um email válido.")
+        .max(255)
+        .transform((email) => email.toLowerCase()),
       password: z.string().min(6, "A senha precisa ter pelo menos 6 caracteres.").max(72),
       role: roleSchema,
     })
@@ -71,7 +93,11 @@ export async function createAdminUser({ data }: { data: { full_name: string; ema
   return { success: true, userId };
 }
 
-export async function updateAdminUserRole({ data }: { data: { userId: string; role: (typeof APP_ROLES)[number] } }) {
+export async function updateAdminUserRole({
+  data,
+}: {
+  data: { userId: string; role: (typeof APP_ROLES)[number] };
+}) {
   const parsed = z
     .object({
       userId: z.string().uuid(),
@@ -79,22 +105,41 @@ export async function updateAdminUserRole({ data }: { data: { userId: string; ro
     })
     .parse(data);
 
-  const { error: deleteError } = await supabase.from("user_roles").delete().eq("user_id", parsed.userId);
-  if (deleteError) throw deleteError;
+  console.log(`Atualizando cargo do usuário ${parsed.userId} para ${parsed.role}...`);
 
+  // Deletar papéis existentes para garantir que ele tenha apenas um
+  const { error: deleteError } = await supabase
+    .from("user_roles")
+    .delete()
+    .eq("user_id", parsed.userId);
+
+  if (deleteError) {
+    console.error("Erro ao deletar papéis antigos:", deleteError);
+    throw deleteError;
+  }
+
+  // Inserir novo papel
   const { error: insertError } = await supabase.from("user_roles").insert({
     user_id: parsed.userId,
     role: parsed.role,
   });
-  if (insertError) throw insertError;
 
+  if (insertError) {
+    console.error("Erro ao inserir novo papel:", insertError);
+    throw insertError;
+  }
+
+  console.log("Cargo atualizado com sucesso.");
   return { success: true };
 }
 
 export async function deleteAdminUser({ data }: { data: { userId: string } }) {
   const parsed = z.object({ userId: z.string().uuid() }).parse(data);
 
-  const { error: deleteRoleError } = await supabase.from("user_roles").delete().eq("user_id", parsed.userId);
+  const { error: deleteRoleError } = await supabase
+    .from("user_roles")
+    .delete()
+    .eq("user_id", parsed.userId);
   if (deleteRoleError) throw deleteRoleError;
 
   return { success: true };
